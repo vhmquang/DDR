@@ -68,20 +68,25 @@ private slots:
 
     int* indexTo3D(int index, int* dims);
 
-   double bilinearInterpolation(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y);
+    double bilinearInterpolation(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y);
 
-   double calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data);
+    double calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data);
 
-   void boundaryTrace(bool isFirst, int prevPoint, int currentPoint, QVector<double> inputDataVector);
+    void boundaryTrace(bool isFirst, int prevPoint, int currentPoint, QVector<double> inputDataVector);
 
-   int checkStartingQuadra(int prevPoint, int currentPoint);
+    int checkStartingQuadra(int prevPoint, int currentPoint);
 
-   QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint);
+    QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint);
 
-   int clockWiseTrace(int prevPoint, int currentPoint, QVector<double> inputDataVector);
+    int clockWiseTrace(int prevPoint, int currentPoint, QVector<double> inputDataVector);
 
-   int getOffSet2D(int x, int y, int* dims);
+    int getOffSet2D(int x, int y, int* dims);
+
     bool checkExistingPoint(int pointValue);
+
+    void printXYZfile(QString filename, QVector<int> data, int* dims, double *spacing);
+
+    QVector<int> filterVectorByThreshold(double* dataArray, double  lower, double upper, int *dims);
 private:
     Ui::MainWindow *ui;
 
@@ -98,12 +103,12 @@ private:
     int globXMax =0;
     int globYMin =0;
     int globYMax =0;
-    double lowerBound = 400;
-    double upperBound = 800;
+    double lowerBound = 100;
+    double upperBound = 300;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;
     QVector<double> tempVector;
-    QVector<int> finalVector;
+    QVector<QVector<int>> finalVector;
     int* resultDims;
     int   numberOfAddedPoint = 0;
     vtkSmartPointer<vtkDICOMImageReader> readerDCMSeries = vtkSmartPointer<vtkDICOMImageReader>::New();

@@ -483,14 +483,17 @@ void MainWindow::on_actionSave_as_xyz_triggered()
                 double temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
                 dataArray[index] = temp;
                 tempVector.append(temp);
-
                 //qDebug () << imageData->GetScalarComponentAsDouble(x,y,z,0);
                 //qDebug() << "Index at: " << index <<"\n";
                 //qDebug () << "Data: " << dataArray[index];
             }
         }
+        //     modifiedDataVector.append(tempVector);
+        //     tempVector.clear();
     }
-    modifiedDataVector.append(tempVector);
+    //  QVector<int> dicomDataAfterFilter = filterVectorByThreshold(dataArray,lowerBound, upperBound, resultDims);
+    //  finalVector.append(dicomDataAfterFilter);
+    //printXYZfile("DICOMdata.xyz", finalVector,resultDims,imageSpacing);
     /*
     //Calculate data for new grid
     for (int z = 0; z < imageDims[2]; z++ ){
@@ -526,46 +529,51 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     //filter data on new grid - old way
     /*   for (int i = 0; i < finalVector.size(); i++)
         for (int k = 0; k < tempVector.size(); k++)
+
             qDebug() << finalVector.value(i).value(k);
 */
     threshHold->SetInputData(imageData);
     //threshHold->ThresholdByUpper(400);
-    for (int z = 0; z < imageDims[2]; z++){
-        QVector<double> inputDataVector = modifiedDataVector.value(z);
-        for (int y = imageDims[1] - 1; y >=0 ; y--){
-            for (int x = 0; x < imageDims[0]; x++){
-                int tempIndex = getOffSet(x,y,0,resultDims);
-                if (inputDataVector.value(tempIndex) < upperBound && inputDataVector.value(tempIndex) > lowerBound){
-                    boundaryTrace(true,0,tempIndex,inputDataVector);
-                    goto exitLoop;
-                }
-            }
-        }
-    }
-    exitLoop: int count = 0;
+    //TODO: 1. Find all points have 0 in adjacents 2. Fill boundary point using k nearest neightbor (k=3) 3. Clockwise trace with k=1.
 
-    QString filename1 ="finalSolution200-1200.xyz";
+    QVector<int> outputDataVector;
+    outputDataVector = filterVectorByThreshold(dataArray,lowerBound, upperBound, resultDims);
+    printXYZfile("AllDicomData.xyz",outputDataVector,resultDims,imageSpacing);
+}
+
+void MainWindow::printXYZfile(QString filename, QVector<int> data, int *dims, double *spacing){
+    QString filename1 = filename;
     QFile file( filename1 );
     if ( file.open(QIODevice::ReadWrite | QIODevice::Text) )
     {
         QTextStream stream( &file );
-        for (int i = 0; i < resultVector.size() ; i++){
-            int* location = indexTo3D(resultVector.value(i),resultDims);
-            double localX = location[0]*zSpacing;
-            double localY = location[1]*zSpacing;
-            double localZ = zSpacing;
+        for (int i = 0; i < data.size() ; i++){
+            int* location = indexTo3D(data.value(i),dims);
+            double localX = location[0] * spacing[0];
+            double localY = location[1] * spacing[1];
+            double localZ = location[2] * spacing[2];
             stream << localX << ' ';
             stream << localY << ' ';
             stream << localZ << ' ';
-            count++;
-            if(count == 1){
-                stream << "\n";
-                count = 0;
-            }
+            stream << '\n';
+
         }
     }
 }
-
+QVector<int> MainWindow::filterVectorByThreshold(double* dataArray, double  lower, double upper, int* dims){
+    QVector<int> result;
+    for (int z = 0; z < dims[2] ; z++){
+        for (int y = dims[1] - 1; y >=0 ; y--){
+            for (int x = 0; x < dims[0]; x++){
+                int tempIndex = getOffSet(x,y,z,dims);
+                if (dataArray[tempIndex] <= upper && dataArray[tempIndex] >= lower){
+                    result.append(tempIndex);
+                }
+            }
+        }
+    }
+    return result;
+}
 
 void MainWindow::on__2D_Slider_valueChanged(int value)
 {
