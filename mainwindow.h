@@ -98,7 +98,7 @@ private:
     int globXMax =0;
     int globYMin =0;
     int globYMax =0;
-    double lowerBound = 200;
+    double lowerBound = 400;
     double upperBound = 800;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;

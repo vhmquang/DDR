@@ -137,11 +137,8 @@ double MainWindow::bilinearInterpolation(double q11, double q12, double q21, dou
 }
 
 void MainWindow::boundaryTrace(bool isFirst, int prevPoint, int currentPoint, QVector<double> inputDataVector){
-    int* currentPointDims;
     int prevPointTemp = prevPoint;
     int currentPointTemp = currentPoint;
-    currentPointDims = indexTo3D(currentPoint,resultDims);
-    // check neu diem do nam trong vung` da~ trace roi thi return
     // check xem co phai la diem dau tien trong viec traceBoundary
     if (isFirst){
         resultVector.append(currentPoint);
@@ -154,27 +151,19 @@ void MainWindow::boundaryTrace(bool isFirst, int prevPoint, int currentPoint, QV
     int nextPoint;
     bool running = true;
     while (running){
-        if (isFirst){
-            nextPoint = clockWiseTrace(prevPointTemp,currentPointTemp,inputDataVector);
-            prevPointTemp = currentPointTemp;
-            currentPointTemp = nextPoint;
-            resultVector.append(nextPoint);
-            qDebug() << "Out of clockWiseTrace with CurrPoint = " << nextPoint  << "Prev Point" <<prevPointTemp << "First Time";
-            isFirst = false;
+        nextPoint = clockWiseTrace(prevPointTemp,currentPointTemp,inputDataVector);
+        if (nextPoint == -1){
+            break;
         }
-        else{
-            nextPoint = clockWiseTrace(prevPointTemp,currentPointTemp,inputDataVector);
-            if (nextPoint == -1){
-                return;
-            }
-            prevPointTemp = currentPointTemp;
-            currentPointTemp = nextPoint;
-            resultVector.append(nextPoint);
-            qDebug() << "Out of clockWiseTrace with CurrPoint = " << nextPoint  << "Prev Point" <<prevPointTemp;
-        }
+        prevPointTemp = currentPointTemp;
+        currentPointTemp = nextPoint;
+        resultVector.append(nextPoint);
+        int* templocal = indexTo3D(nextPoint, imageDims);
+        int* templocal2 = indexTo3D(prevPointTemp, imageDims);
+        qDebug() << "Next point location x: " << templocal[0] << "  y: "  << templocal[1] << " and Prev Point location x: " <<templocal2[0] << "  y: "<< templocal2[1];
     }
-    //boundaryTrace(xmin, xmax, ymin, ymax, false, currentPoint, nextPoint);
 }
+
 
 
 QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, int startingPoint){
@@ -186,8 +175,8 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     int* location = indexTo3D(position,resultDims);
     int x = location[0];
     int y = location[1];
-    int width = numberOfAddedPoint;
-    int height = numberOfAddedPoint;
+    int width = resultDims[0];
+    int height = resultDims[0];
     int result = 0;
     int tempX;
     int tempY;
@@ -196,15 +185,15 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     */
     tempX = x - distance;
     for (int i = 0; i <= distance; i++){
-        tempY = y + i;
+        tempY = y - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,0,resultDims);
             topLeft.append(result);
         }
     }
-    tempY = y + distance;
-    for (int i = (-distance + 1); i < 0; i++){
-        tempX = x + i;
+    tempY = y - distance;
+    for (int i = (distance - 1); i > 0; i--){
+        tempX = x - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,0,resultDims);
             topLeft.append(result);
@@ -213,7 +202,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     /*
     Case 2: Top Right
     */
-    tempY = y + distance;
+    tempY = y - distance;
     for (int i = 0 ; i <= distance; i++){
         tempX = x + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
@@ -223,7 +212,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     }
     tempX = x + distance;
     for (int i = (distance - 1); i > 0; i--){
-        tempY = y + i;
+        tempY = y - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,0,resultDims);
             topRight.append(result);
@@ -234,13 +223,13 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     */
     tempX = x + distance;
     for (int i = 0 ; i <= distance; i++ ){
-        tempY = y - i;
+        tempY = y + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,0,resultDims);
             bottomRight.append(result);
         }
     }
-    tempY = y - distance;
+    tempY = y + distance;
     for (int i = (distance - 1) ; i > 0; i-- ){
         tempX = x + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
@@ -250,9 +239,9 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     }
 
     /*
-    Case 4: Right Line
+    Case 4: Bottom Left
     */
-    tempY = y - distance;
+    tempY = y + distance;
     for (int i = 0; i <= distance ; i++ ){
         tempX = x - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
@@ -262,7 +251,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     }
     tempX = x - distance;
     for (int i = (distance - 1 ); i > 0 ; i-- ){
-        tempY = y - i;
+        tempY = y + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,0,resultDims);
             bottomLeft.append(result);
@@ -298,8 +287,8 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
 }
 
 int MainWindow::checkStartingQuadra(int prevPoint, int currentPoint){
-    int* prevLocation =  indexTo3D(prevPoint,resultDims);
-    int* curLocation  = indexTo3D(currentPoint,resultDims);
+    int* prevLocation =  indexTo3D(prevPoint,imageDims);
+    int* curLocation  = indexTo3D(currentPoint,imageDims);
     if (prevLocation[0] == 0 && prevLocation[1] == 0)
         return 1;
     if (prevLocation[1] == curLocation[1]){
@@ -308,7 +297,7 @@ int MainWindow::checkStartingQuadra(int prevPoint, int currentPoint){
         if ( prevLocation[0] > curLocation[0])
             return 5;
     }
-    if (prevLocation[1] < curLocation[1]){
+    if (prevLocation[1] > curLocation[1]){
         if (prevLocation[0] == curLocation[0])
             return 1;
         if (prevLocation[0] < curLocation[0])
@@ -316,7 +305,7 @@ int MainWindow::checkStartingQuadra(int prevPoint, int currentPoint){
         if (prevLocation[0] > curLocation[0])
             return 5;
     }
-    if (prevLocation[1] > curLocation[1]){
+    if (prevLocation[1] < curLocation[1]){
         if (prevLocation[0] == curLocation[0])
             return 7;
         if (prevLocation[0] < curLocation[0])
@@ -340,7 +329,7 @@ bool MainWindow::checkExistingPoint(int pointValue){
 }
 // clockWiseTrace function, dung de tinh nextPoint index
 int MainWindow::clockWiseTrace(int prevPoint, int currentPoint, QVector<double> inputDataVector){
-    int startPosition = 0;
+    int startPosition = 1;
     QVector<int> allIndex;
     while (true){
         /*
@@ -350,13 +339,14 @@ int MainWindow::clockWiseTrace(int prevPoint, int currentPoint, QVector<double> 
         /*
         Obtain all index with each k, then query the result to determine interesting point
         */
-        for (int i = 1; i<= numberOfAddedPoint;i++){
+        qDebug() << "Start obtain index;";
+        for (int i = 1; i<= 20;i++){
+            qDebug() << "Obtain index with distance = " << i;
             allIndex = getAllIndexFromKDistance(currentPoint,i,startPosition);
             /*
              * query inside all adjacent neighbors
              */
             for (int k = 0; k < allIndex.size(); k++){
-                //TODO: implement assertsion
                 double value = inputDataVector.value(allIndex.value(k));
                 if (value >= lowerBound && value <= upperBound){
                     if (allIndex.value(k) == firstPoint)
@@ -367,6 +357,7 @@ int MainWindow::clockWiseTrace(int prevPoint, int currentPoint, QVector<double> 
                 }
             }
         }
+        return -1;
     }
 }
 
@@ -476,7 +467,7 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     finalResult = new int[resultSize];
     qDebug() << "Result size " << resultSize;
     int simple[3] = {numberOfAddedPoint,numberOfAddedPoint,1};
-    resultDims = simple;
+    resultDims = imageDims;
     vtkIdType a = imageData->GetNumberOfPoints();
     double* spacing = readerDCMSeries->GetPixelSpacing();
     int maxDimension = numberOfAddedPoint*numberOfAddedPoint*depth;
@@ -484,20 +475,23 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     //Extract DICOM data
     for (int z = 0; z < imageDims[2]; z++ ){
         qDebug("Running Inside Image");
-        for (int y = 0; y < imageDims[1];y++){
+        for (int y = imageDims[1] - 1; y >=0  ;y--){
             for (int x = 0; x < imageDims[0]; x++){
                 int index = getOffSet(x,y,z,imageDims);
                 // int* result = indexTo3D(index,imageDims);
                 // qDebug () << *result;
                 double temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
                 dataArray[index] = temp;
+                tempVector.append(temp);
+
                 //qDebug () << imageData->GetScalarComponentAsDouble(x,y,z,0);
                 //qDebug() << "Index at: " << index <<"\n";
                 //qDebug () << "Data: " << dataArray[index];
             }
         }
     }
-
+    modifiedDataVector.append(tempVector);
+    /*
     //Calculate data for new grid
     for (int z = 0; z < imageDims[2]; z++ ){
         //    qDebug("Running Inside Image");
@@ -527,6 +521,7 @@ void MainWindow::on_actionSave_as_xyz_triggered()
         modifiedDataVector.append(tempVector);
         QVector<QVector<double>> same = modifiedDataVector;
     }
+    */
 
     //filter data on new grid - old way
     /*   for (int i = 0; i < finalVector.size(); i++)
@@ -535,24 +530,27 @@ void MainWindow::on_actionSave_as_xyz_triggered()
 */
     threshHold->SetInputData(imageData);
     //threshHold->ThresholdByUpper(400);
-    for (int z = 0; z < resultDims[2]; z++){
+    for (int z = 0; z < imageDims[2]; z++){
         QVector<double> inputDataVector = modifiedDataVector.value(z);
-        for (int i = 0; i < inputDataVector.size(); i++){
-            if (inputDataVector.value(i) < upperBound && inputDataVector.value(i) > lowerBound){
-                boundaryTrace(true,0,i,inputDataVector);
-                break;
+        for (int y = imageDims[1] - 1; y >=0 ; y--){
+            for (int x = 0; x < imageDims[0]; x++){
+                int tempIndex = getOffSet(x,y,0,resultDims);
+                if (inputDataVector.value(tempIndex) < upperBound && inputDataVector.value(tempIndex) > lowerBound){
+                    boundaryTrace(true,0,tempIndex,inputDataVector);
+                    goto exitLoop;
+                }
             }
         }
     }
-    int count = 0;
+    exitLoop: int count = 0;
 
     QString filename1 ="finalSolution200-1200.xyz";
     QFile file( filename1 );
     if ( file.open(QIODevice::ReadWrite | QIODevice::Text) )
     {
         QTextStream stream( &file );
-        for (int i = 0; i < modifiedDataVector.value(0).size() ; i++){
-            int* location = indexTo3D(modifiedDataVector.value(0).value(i),resultDims);
+        for (int i = 0; i < resultVector.size() ; i++){
+            int* location = indexTo3D(resultVector.value(i),resultDims);
             double localX = location[0]*zSpacing;
             double localY = location[1]*zSpacing;
             double localZ = zSpacing;
