@@ -64,7 +64,7 @@ private slots:
 
     int getOffSet(int x, int y, int z, int* dims);
 
-    bool isBoundaryPoint(int x, int y, int z, double lowerValue, double upperValue, int* dims);
+    bool isBoundaryPoint(int x, int y ,int z, double* data ,double lowerValue, double upperValue, int* dims);
 
     int* indexTo3D(int index, int* dims);
 

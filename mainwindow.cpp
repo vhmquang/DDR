@@ -361,87 +361,70 @@ int MainWindow::clockWiseTrace(int prevPoint, int currentPoint, QVector<double> 
     }
 }
 
-bool MainWindow::isBoundaryPoint(int x, int y ,int z, double lowerValue, double upperValue, int* dims){
+bool MainWindow::isBoundaryPoint(int x, int y ,int z, double* data ,double lowerValue, double upperValue, int* dims){
     int x1 = x + 1;
     int x2 = x - 1 ;
     int y1 = y + 1;
     int y2 = y -1 ;
     bool isValid = false;
     int tempIndex = 0;
-    try {
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x2,y1,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
         {   isValid = true;
             return isValid;
         }
-    }  catch(int e) {
-        qDebug() << e;
-    };
-    try{
-        tempIndex = getOffSet(x2,y,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
-        {   isValid = true;
-            return isValid;
-        }
-    }  catch(int e) {
-        qDebug() << e;
-    }  ;
-    try {
-        tempIndex = getOffSet(x2,y2,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
-        {   isValid = true;
-            return isValid;
-        }
-    }  catch(int e) {
-        qDebug() << e;
-    };
-    try {
-        tempIndex = getOffSet(x,y2,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
-        {   isValid = true;
-            return isValid;
-        }
-    }  catch(int e) {
-        qDebug() << e;
-    };
-    try{
-        tempIndex = getOffSet(x,y1,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
-        {   isValid = true;
-            return isValid;
-        }
-    }  catch(int e) {
-        qDebug() << e;
-    };
-    try{
-        tempIndex = getOffSet(x1,y,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
-        {   isValid = true;
-            return isValid;
-        }
-    }  catch(int e) {
-        qDebug() << e;
-    };
-    try {
-        tempIndex = getOffSet(x1,y1,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
-        {   isValid = true;
-            return isValid;
-        }
-    }  catch(int e) {
-        qDebug() << e;
     }
-    try {
-        tempIndex = getOffSet(x1,y2,z,dims);
-        if (result[tempIndex] < lowerValue || result[tempIndex] > upperValue)
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x2,y,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
         {   isValid = true;
             return isValid;
         }
-    }  catch(int e) {
-        qDebug() << e;
-    };
+    }
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x2,y2,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
+        {   isValid = true;
+            return isValid;
+        }
+    }
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x,y2,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
+        {   isValid = true;
+            return isValid;
+        }
+    }
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x,y1,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
+        {   isValid = true;
+            return isValid;
+        }
+    }
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x1,y,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
+        {   isValid = true;
+            return isValid;
+        }
+    }
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x1,y1,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
+        {   isValid = true;
+            return isValid;
+        }
+    }
+    if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
+        tempIndex = getOffSet(x1,y2,z,dims);
+        if (data[tempIndex] < lowerValue || data[tempIndex] > upperValue)
+        {   isValid = true;
+            return isValid;
+        }
+    }
     return isValid;
-
 }
 void MainWindow::on_actionSave_as_xyz_triggered()
 {
@@ -534,11 +517,27 @@ void MainWindow::on_actionSave_as_xyz_triggered()
 */
     threshHold->SetInputData(imageData);
     //threshHold->ThresholdByUpper(400);
-    //TODO: 1. Find all points have 0 in adjacents 2. Fill boundary point using k nearest neightbor (k=3) 3. Clockwise trace with k=1.
+    //TODO: 2. Fill boundary point using k nearest neightbor (k=3) 3. Clockwise trace with k=1.
 
-    QVector<int> outputDataVector;
-    outputDataVector = filterVectorByThreshold(dataArray,lowerBound, upperBound, resultDims);
-    printXYZfile("AllDicomData.xyz",outputDataVector,resultDims,imageSpacing);
+    QVector<int> filterDataVector;
+    filterDataVector = filterVectorByThreshold(dataArray,lowerBound, upperBound, resultDims);
+    //1. Find all points have 0 in adjacents
+    QVector<int> boundaryDataVector;
+    for (int i = 0; i < filterDataVector.size(); i++){
+        int filterDataIndex = filterDataVector.at(i);
+        int* filterDataLocation = indexTo3D(filterDataIndex,resultDims);
+        int x = filterDataLocation[0];
+        int y = filterDataLocation[1];
+        int z = filterDataLocation[2];
+        bool isBoundary = isBoundaryPoint(x,y,z,dataArray,lowerBound,upperBound,resultDims);
+        if (isBoundary){
+            boundaryDataVector.append(filterDataIndex);
+        }
+
+    }
+    printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
+    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
+
 }
 
 void MainWindow::printXYZfile(QString filename, QVector<int> data, int *dims, double *spacing){
