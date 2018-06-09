@@ -40,7 +40,7 @@
 #include <QVector2D>
 #include <QVector>
 #include <math.h>
-
+#include <linefunction.h>
 namespace Ui {
 class MainWindow;
 }
@@ -72,21 +72,25 @@ private slots:
 
     double calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data);
 
-    void boundaryTrace(bool isFirst, int prevPoint, int currentPoint, QVector<double> inputDataVector);
-
     int checkStartingQuadra(int prevPoint, int currentPoint);
 
     QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint);
 
-    int clockWiseTrace(int prevPoint, int currentPoint, QVector<double> inputDataVector);
+    void clockWiseTrace();
+
+    int findNextPoint(double distance, int currPoint, int prevPoint);
 
     int getOffSet2D(int x, int y, int* dims);
 
-    bool checkExistingPoint(int pointValue);
+    int checkStartPosition(int prevPoint, int currPoint);
 
     void printXYZfile(QString filename, QVector<int> data, int* dims, double *spacing);
 
     QVector<int> filterVectorByThreshold(double* dataArray, double  lower, double upper, int *dims);
+
+    double startingAngle(int prevPoint, int currPoint);
+
+    int findFirstPoint();
 private:
     Ui::MainWindow *ui;
 
@@ -109,6 +113,9 @@ private:
     QVector<QVector<double>> modifiedDataVector;
     QVector<double> tempVector;
     QVector<QVector<int>> finalVector;
+    QVector<int> filterDataVector;
+    QVector<int> boundaryDataVector;
+    QVector<int> externalBoundaryVector;
     int* resultDims;
     int   numberOfAddedPoint = 0;
     vtkSmartPointer<vtkDICOMImageReader> readerDCMSeries = vtkSmartPointer<vtkDICOMImageReader>::New();
@@ -119,6 +126,7 @@ private:
     vtkSmartPointer<vtkImageViewer2> imageViewerDCMSeries = vtkSmartPointer<vtkImageViewer2>::New();
     vtkSmartPointer<vtkImageDataGeometryFilter> imageFilter = vtkSmartPointer<vtkImageDataGeometryFilter>::New();
     vtkSmartPointer<vtkDelaunay3D> delaunay3D = vtkSmartPointer<vtkDelaunay3D>::New();
+    enum startPosition { left = 0, right = 1};
 
 };
 

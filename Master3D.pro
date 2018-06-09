@@ -26,9 +26,11 @@ TARGET = Master3D
 TEMPLATE = app
 
 SOURCES += main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+    linefunction.cpp
 
-HEADERS += mainwindow.h
+HEADERS += mainwindow.h \
+    linefunction.h
 
 FORMS += mainwindow.ui
 INCLUDEPATH += "C:\Program Files\VTK\include\vtk-8.0"

@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include <QFileDialog.h>
 #include <QMessageBox>
+#define _USE_MATH_DEFINES
+#include <math.h>
 VTK_MODULE_INIT(vtkRenderingOpenGL2) //initialize object factory for Marching Cubes
 VTK_MODULE_INIT(vtkRenderingVolumeOpenGL2) //initialize object factory for Ray Caster
 VTK_MODULE_INIT(vtkInteractionStyle) //initialize object factory for default interation style in 2D
@@ -135,36 +137,6 @@ double MainWindow::bilinearInterpolation(double q11, double q12, double q21, dou
                 q22 * xx1 * yy1
                 );
 }
-
-void MainWindow::boundaryTrace(bool isFirst, int prevPoint, int currentPoint, QVector<double> inputDataVector){
-    int prevPointTemp = prevPoint;
-    int currentPointTemp = currentPoint;
-    // check xem co phai la diem dau tien trong viec traceBoundary
-    if (isFirst){
-        resultVector.append(currentPoint);
-        currentPointTemp = currentPoint;
-        firstPoint = currentPoint;
-        //qDebug() << finalIndex;
-    }
-
-    // tinh nextPoint = cach chay clockWiseTrace;
-    int nextPoint;
-    bool running = true;
-    while (running){
-        nextPoint = clockWiseTrace(prevPointTemp,currentPointTemp,inputDataVector);
-        if (nextPoint == -1){
-            break;
-        }
-        prevPointTemp = currentPointTemp;
-        currentPointTemp = nextPoint;
-        resultVector.append(nextPoint);
-        int* templocal = indexTo3D(nextPoint, imageDims);
-        int* templocal2 = indexTo3D(prevPointTemp, imageDims);
-        qDebug() << "Next point location x: " << templocal[0] << "  y: "  << templocal[1] << " and Prev Point location x: " <<templocal2[0] << "  y: "<< templocal2[1];
-    }
-}
-
-
 
 QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, int startingPoint){
     QVector<int> resultArray ;
@@ -314,51 +286,212 @@ int MainWindow::checkStartingQuadra(int prevPoint, int currentPoint){
             return 5;
     }
 }
-bool MainWindow::checkExistingPoint(int pointValue){
-    bool testResult = true;
-    int temp = finalIndex;
-    int temp2;
-    for (int i = 0; i < finalIndex; i++ ){
-        temp2 = finalResult[i];
-        //qDebug() << "Compare: " << temp2 <<"With point: " << pointValue;
-        if ( temp2 == pointValue){
-            testResult = false;
-        }
-    }
-    return testResult;
+int MainWindow::checkStartPosition(int prevPoint,int currPoint){
+    int* currPosition = indexTo3D(currPoint,resultDims);
+    int* prevPosition = indexTo3D(prevPoint,resultDims);
+    int prevX = prevPosition[0];
+    int currX = currPosition[0];
+    int prevY = prevPosition[1];
+    int currY = currPosition[1];
+    if (prevPoint == 0)
+        return 1;
+    else if (prevX == currX && prevY > currY)
+        return 0;
+    else if (prevX == currX && prevY < currY)
+        return 1;
+    else if (prevX > currX)
+        return 1;
+    else
+        return 0;
 }
-// clockWiseTrace function, dung de tinh nextPoint index
-int MainWindow::clockWiseTrace(int prevPoint, int currentPoint, QVector<double> inputDataVector){
-    int startPosition = 1;
-    QVector<int> allIndex;
-    while (true){
-        /*
-        Check start position
-        */
-        startPosition = checkStartingQuadra(prevPoint,currentPoint);
-        /*
-        Obtain all index with each k, then query the result to determine interesting point
-        */
-        qDebug() << "Start obtain index;";
-        for (int i = 1; i<= 20;i++){
-            qDebug() << "Obtain index with distance = " << i;
-            allIndex = getAllIndexFromKDistance(currentPoint,i,startPosition);
-            /*
-             * query inside all adjacent neighbors
-             */
-            for (int k = 0; k < allIndex.size(); k++){
-                double value = inputDataVector.value(allIndex.value(k));
-                if (value >= lowerBound && value <= upperBound){
-                    if (allIndex.value(k) == firstPoint)
+int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
+    //TODO: compare x to find which side the point should be
+    lineFunction line;
+    double angle;
+    double stepAngle = 0.5;
+    int* currPointLocation = indexTo3D(currPoint,resultDims);
+    int* prevPointLocation = indexTo3D(prevPoint,resultDims);
+    int position;
+    int nextPointX;
+    int nextPointY;
+    int currentX = currPointLocation[0];
+    int currentY = currPointLocation[1];
+    int prevX = prevPointLocation[0];
+    int prevY = prevPointLocation[1];
+    int nextPoint;
+    bool isPass;
+    int* nextPointLocation;
+
+    QVector<int> allIndexFromKDistance;
+    if (prevX == currentX){
+        if (prevY < currentY)
+            angle = -90;
+        else
+            angle = 90;
+    }
+    else{
+        angle = startingAngle(prevPoint,currPoint);
+    }
+    if (prevPoint == 0){
+        angle = 89.5;
+    }
+    position = checkStartPosition(prevPoint,currPoint);
+    for (int i = 0; i < 820; i++)
+    {
+        angle = angle + stepAngle;
+        if (angle== 180){
+            qDebug()<<"";
+        }
+        if (angle == -90 || angle == 90 || angle == 270 || angle == -270 || angle == 450 || angle == 540 || angle == 630)
+        {
+            for (int k = 1 ; k <= distance; k++)
+            {
+                if (position == 0)
+                {
+                    nextPointX = currPointLocation[0];
+                    nextPointY = currPointLocation[1] - k;
+                    nextPoint = getOffSet(nextPointX,nextPointY,currPointLocation[2],resultDims);
+                }
+                else {
+                    nextPointX = currPointLocation[0];
+                    nextPointY = currPointLocation[1] + k;
+                    nextPoint = getOffSet(nextPointX,nextPointY,currPointLocation[2],resultDims);
+                }
+                if (boundaryDataVector.contains(nextPoint))
+                {
+                    if (nextPoint == firstPoint){
                         return -1;
-                    QVector<int> test = resultVector;
-                    if (!resultVector.contains(allIndex.value(k)))
-                        return allIndex.value(k);
+                    }
+                    else if(!externalBoundaryVector.contains(nextPoint)){
+                        qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
+                        return nextPoint;
+                    }
+                }
+            }
+            if (position == 0){
+                position = 1;
+            }
+            else {
+                position = 0;
+            }
+        }
+        else
+        {
+            line = lineFunction(angle,currPointLocation[0],currPointLocation[1]);
+            for (int k = 1 ; k <= distance; k++)
+            {
+                allIndexFromKDistance = getAllIndexFromKDistance(currPoint,k,1);
+                for (int vectorIndex = 0 ; vectorIndex < allIndexFromKDistance.size();vectorIndex++){
+                    nextPoint = allIndexFromKDistance.at(vectorIndex);
+                    nextPointLocation = indexTo3D(nextPoint,resultDims);
+                    isPass = line.isPassThroughPoint(nextPointLocation[0], nextPointLocation[1]);
+                    nextPointX = nextPointLocation[0];
+                    nextPointY = nextPointLocation[1];
+                    int currentX = currPointLocation[0];
+                    int currentY = currPointLocation[1];
+                    if (currentX == 233 && currentY==135 && nextPointX==234 && nextPointY == 135){
+                        qDebug() << " ";
+                    }
+                    if (position == 0){
+                        if (isPass && boundaryDataVector.contains(nextPoint) && nextPointX < currPointLocation[0])
+                        {
+                            if (nextPoint == firstPoint)
+                            {
+                                return -1;
+                            }
+                            else if(!externalBoundaryVector.contains(nextPoint)){
+                                qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
+                                return nextPoint;
+                            }
+                        }
+                    }
+                    else {
+                        if (isPass && boundaryDataVector.contains(nextPoint) && nextPointX  > currPointLocation[0])
+                        {
+                            if (nextPoint == firstPoint)
+                            {
+                                return -1;
+                            }
+                            else if(!externalBoundaryVector.contains(nextPoint)){
+                                qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
+                                return nextPoint;
+                            }
+                        }
+                    }
                 }
             }
         }
-        return -1;
     }
+    return -1;
+}
+
+int MainWindow::findFirstPoint(){
+    int index;
+    for (int z = 0; z < imageDims[2]; z++ )
+    {
+        for (int y = imageDims[1] - 1; y >=0  ;y--)
+        {
+            for (int x = 0; x < imageDims[0]; x++)
+            {
+                index = getOffSet(x,y,z,resultDims);
+                if (boundaryDataVector.contains(index))
+                {
+                    return index;
+                }
+            }
+        }
+    }
+}
+// clockWiseTrace function, dung de tinh nextPoint index
+void MainWindow::clockWiseTrace(){
+    //TODO: Find first point, then find starting angle. For each stepAngle = 0.5, calculate lineQuation
+    // then find all point around 0..k distance and check with equation.
+    // if true then return point, compare with first point. If == FP, exist
+    // else continue to find next point
+    bool isRunning = true;
+    bool isFirstPoint = true;
+    int currPoint;
+    int prevPoint = 0;
+    int nextPoint;
+    int distance = 3;
+    while(isRunning){
+        if (isFirstPoint)
+        {
+            currPoint = findFirstPoint();
+            firstPoint = currPoint;
+            externalBoundaryVector.append(firstPoint);
+            isFirstPoint = false;
+            nextPoint = findNextPoint(distance,currPoint,0);
+            qDebug() << "Find nextpoint: "<< nextPoint <<"find First Point: " << firstPoint;
+            if (nextPoint == -1)
+                return;
+            externalBoundaryVector.append(nextPoint);
+            prevPoint = currPoint;
+            currPoint = nextPoint;
+        }
+        else
+        {
+            nextPoint = findNextPoint(distance,currPoint,prevPoint);
+            if (nextPoint == -1)
+                return;
+            externalBoundaryVector.append(nextPoint);
+            qDebug() << "Find nextpoint: "<< nextPoint;
+            prevPoint = currPoint;
+            currPoint = nextPoint;
+        }
+    }
+}
+
+
+double MainWindow::startingAngle(int prevPoint, int currPoint){
+    double angle =0;
+    if (prevPoint == 0){
+        return angle = 90;
+    }
+    int* prevLocation = indexTo3D(prevPoint,resultDims);
+    int* currLocation = indexTo3D(currPoint,resultDims);
+    angle =  atan2(prevLocation[1] - currLocation[1], prevLocation[0] - currLocation[0])* 180 / M_PI;;
+    return angle;
 }
 
 bool MainWindow::isBoundaryPoint(int x, int y ,int z, double* data ,double lowerValue, double upperValue, int* dims){
@@ -519,10 +652,8 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     //threshHold->ThresholdByUpper(400);
     //TODO: 2. Fill boundary point using k nearest neightbor (k=3) 3. Clockwise trace with k=1.
 
-    QVector<int> filterDataVector;
     filterDataVector = filterVectorByThreshold(dataArray,lowerBound, upperBound, resultDims);
     //1. Find all points have 0 in adjacents
-    QVector<int> boundaryDataVector;
     for (int i = 0; i < filterDataVector.size(); i++){
         int filterDataIndex = filterDataVector.at(i);
         int* filterDataLocation = indexTo3D(filterDataIndex,resultDims);
@@ -535,8 +666,10 @@ void MainWindow::on_actionSave_as_xyz_triggered()
         }
 
     }
+    clockWiseTrace();
     printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
     printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
+    printXYZfile("externalBoundaryData.xyz",externalBoundaryVector,resultDims,imageSpacing);
 
 }
 
