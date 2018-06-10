@@ -339,10 +339,7 @@ int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
     for (int i = 0; i < 820; i++)
     {
         angle = angle + stepAngle;
-        if (angle== 180){
-            qDebug()<<"";
-        }
-        if (angle == -90 || angle == 90 || angle == 270 || angle == -270 || angle == 450 || angle == 540 || angle == 630)
+        if (angle == -90 || angle == 90 || angle == 270 || angle == -270 || angle == 450  || angle == 630)
         {
             for (int k = 1 ; k <= distance; k++)
             {
@@ -362,8 +359,8 @@ int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
                     if (nextPoint == firstPoint){
                         return -1;
                     }
-                    else if(!externalBoundaryVector.contains(nextPoint)){
-                        qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
+                    else if(!tempVector.contains(nextPoint)){
+                       // qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
                         return nextPoint;
                     }
                 }
@@ -389,9 +386,6 @@ int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
                     nextPointY = nextPointLocation[1];
                     int currentX = currPointLocation[0];
                     int currentY = currPointLocation[1];
-                    if (currentX == 233 && currentY==135 && nextPointX==234 && nextPointY == 135){
-                        qDebug() << " ";
-                    }
                     if (position == 0){
                         if (isPass && boundaryDataVector.contains(nextPoint) && nextPointX < currPointLocation[0])
                         {
@@ -399,8 +393,8 @@ int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
                             {
                                 return -1;
                             }
-                            else if(!externalBoundaryVector.contains(nextPoint)){
-                                qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
+                            else if(!tempVector.contains(nextPoint)){
+                             //   qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
                                 return nextPoint;
                             }
                         }
@@ -412,8 +406,8 @@ int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
                             {
                                 return -1;
                             }
-                            else if(!externalBoundaryVector.contains(nextPoint)){
-                                qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
+                            else if(!tempVector.contains(nextPoint)){
+                             //   qDebug() <<"Return point x: \t" << nextPointX << "\t y: \t" << nextPointY;
                                 return nextPoint;
                             }
                         }
@@ -422,22 +416,20 @@ int MainWindow::findNextPoint(double distance, int currPoint, int prevPoint){
             }
         }
     }
-    return -1;
+    qDebug() << "Can't find next point";
+    return -2;
 }
 
-int MainWindow::findFirstPoint(){
+int MainWindow::findFirstPoint(int z){
     int index;
-    for (int z = 0; z < imageDims[2]; z++ )
+    for (int y = imageDims[1] - 1; y >=0  ;y--)
     {
-        for (int y = imageDims[1] - 1; y >=0  ;y--)
+        for (int x = 0; x < imageDims[0]; x++)
         {
-            for (int x = 0; x < imageDims[0]; x++)
+            index = getOffSet(x,y,z,resultDims);
+            if (boundaryDataVector.contains(index) && !externalBoundaryVector.contains(index))
             {
-                index = getOffSet(x,y,z,resultDims);
-                if (boundaryDataVector.contains(index))
-                {
-                    return index;
-                }
+                return index;
             }
         }
     }
@@ -453,31 +445,46 @@ void MainWindow::clockWiseTrace(){
     int currPoint;
     int prevPoint = 0;
     int nextPoint;
-    int distance = 3;
-    while(isRunning){
-        if (isFirstPoint)
-        {
-            currPoint = findFirstPoint();
-            firstPoint = currPoint;
-            externalBoundaryVector.append(firstPoint);
-            isFirstPoint = false;
-            nextPoint = findNextPoint(distance,currPoint,0);
-            qDebug() << "Find nextpoint: "<< nextPoint <<"find First Point: " << firstPoint;
-            if (nextPoint == -1)
-                return;
-            externalBoundaryVector.append(nextPoint);
-            prevPoint = currPoint;
-            currPoint = nextPoint;
-        }
-        else
-        {
-            nextPoint = findNextPoint(distance,currPoint,prevPoint);
-            if (nextPoint == -1)
-                return;
-            externalBoundaryVector.append(nextPoint);
-            qDebug() << "Find nextpoint: "<< nextPoint;
-            prevPoint = currPoint;
-            currPoint = nextPoint;
+    int distance = 1;
+    for (int z = 0; z < resultDims[2]; z++){
+        distance = 1;
+        isRunning = true;
+        while(isRunning){
+            if (isFirstPoint)
+            {
+                currPoint = findFirstPoint(z);
+                firstPoint = currPoint;
+                tempVector.append(firstPoint);
+                isFirstPoint = false;
+                nextPoint = findNextPoint(distance,currPoint,0);
+                if (nextPoint == -1){
+                    isRunning = false;
+                    externalBoundaryVector.append(tempVector);
+                    qDebug() << "Finish extract boundary of slice: " << z;
+                }
+                else if (nextPoint != -2)
+                    tempVector.append(nextPoint);
+                prevPoint = currPoint;
+                currPoint = nextPoint;
+            }
+            else
+            {
+                nextPoint = findNextPoint(distance,currPoint,prevPoint);
+                if (nextPoint == -1){
+                    isRunning = false;
+                    externalBoundaryVector.append(tempVector);
+                    qDebug() << "Finish extract boundary of slice: " << z;
+                }
+                else if (nextPoint != -2)
+                    tempVector.append(nextPoint);
+                prevPoint = currPoint;
+                currPoint = nextPoint;
+                if (nextPoint == -2){
+                    distance++;
+                    isFirstPoint = true;
+                    tempVector.clear();
+                }
+            }
         }
     }
 }
@@ -598,7 +605,7 @@ void MainWindow::on_actionSave_as_xyz_triggered()
                 // qDebug () << *result;
                 double temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
                 dataArray[index] = temp;
-                tempVector.append(temp);
+                //tempVector.append(temp);
                 //qDebug () << imageData->GetScalarComponentAsDouble(x,y,z,0);
                 //qDebug() << "Index at: " << index <<"\n";
                 //qDebug () << "Data: " << dataArray[index];
@@ -653,6 +660,8 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     //TODO: 2. Fill boundary point using k nearest neightbor (k=3) 3. Clockwise trace with k=1.
 
     filterDataVector = filterVectorByThreshold(dataArray,lowerBound, upperBound, resultDims);
+    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
+
     //1. Find all points have 0 in adjacents
     for (int i = 0; i < filterDataVector.size(); i++){
         int filterDataIndex = filterDataVector.at(i);
@@ -666,9 +675,9 @@ void MainWindow::on_actionSave_as_xyz_triggered()
         }
 
     }
-    clockWiseTrace();
     printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
-    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
+
+    clockWiseTrace();
     printXYZfile("externalBoundaryData.xyz",externalBoundaryVector,resultDims,imageSpacing);
 
 }

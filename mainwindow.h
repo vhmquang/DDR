@@ -90,7 +90,7 @@ private slots:
 
     double startingAngle(int prevPoint, int currPoint);
 
-    int findFirstPoint();
+    int findFirstPoint(int z);
 private:
     Ui::MainWindow *ui;
 
@@ -107,11 +107,11 @@ private:
     int globXMax =0;
     int globYMin =0;
     int globYMax =0;
-    double lowerBound = 100;
+    double lowerBound = 80;
     double upperBound = 300;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;
-    QVector<double> tempVector;
+    QVector<int> tempVector;
     QVector<QVector<int>> finalVector;
     QVector<int> filterDataVector;
     QVector<int> boundaryDataVector;
