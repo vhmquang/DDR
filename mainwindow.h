@@ -74,11 +74,11 @@ private slots:
 
     int checkStartingQuadra(int prevPoint, int currentPoint);
 
-    QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint);
+    QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint, int z);
 
-    void clockWiseTrace();
+    void clockWiseTrace(int z);
 
-    int findNextPoint(double distance, int currPoint, int prevPoint);
+    int findNextPoint(int distance, int currPoint, int prevPoint, int z);
 
     int getOffSet2D(int x, int y, int* dims);
 
@@ -86,11 +86,15 @@ private slots:
 
     void printXYZfile(QString filename, QVector<int> data, int* dims, double *spacing);
 
-    QVector<int> filterVectorByThreshold(double* dataArray, double  lower, double upper, int *dims);
+    void filterVectorByThreshold(double  lower, double upper, int *dims, int z);
 
     double startingAngle(int prevPoint, int currPoint);
 
     int findFirstPoint(int z);
+
+    void extractDICOMData();
+
+    void findBoundaryPoint();
 private:
     Ui::MainWindow *ui;
 
@@ -107,8 +111,11 @@ private:
     int globXMax =0;
     int globYMin =0;
     int globYMax =0;
-    double lowerBound = 80;
+    double lowerBound = 75;
+    double defaultLowerBound = 75;
     double upperBound = 300;
+    double maxLowerBound = 150;
+    double stepBound = 1;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;
     QVector<int> tempVector;
@@ -118,6 +125,7 @@ private:
     QVector<int> externalBoundaryVector;
     int* resultDims;
     int   numberOfAddedPoint = 0;
+    double* dataArray;
     vtkSmartPointer<vtkDICOMImageReader> readerDCMSeries = vtkSmartPointer<vtkDICOMImageReader>::New();
     vtkSmartPointer<vtkImageData> imageData = vtkSmartPointer<vtkImageData>::New();
     vtkSmartPointer<vtkThreshold> threshHold = vtkSmartPointer<vtkThreshold>::New();
