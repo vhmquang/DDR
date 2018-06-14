@@ -64,15 +64,13 @@ private slots:
 
     int getOffSet(int x, int y, int z, int* dims);
 
-    bool isBoundaryPoint(int x, int y ,int z, double* data ,double lowerValue, double upperValue, int* dims);
+    bool isBoundaryPoint(int x, int y , int z, double lowerValue, double upperValue, int* dims);
 
     int* indexTo3D(int index, int* dims);
 
     double bilinearInterpolation(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y);
 
     double calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data);
-
-    int checkStartingQuadra(int prevPoint, int currentPoint);
 
     QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint, int z);
 
@@ -107,15 +105,11 @@ private:
     int firstPoint;
     int resultSize;
     int* finalResult;
-    int globXMin =0;
-    int globXMax =0;
-    int globYMin =0;
-    int globYMax =0;
-    double lowerBound = 75;
-    double defaultLowerBound = 75;
+    double lowerBound = 90;
+    double defaultLowerBound = 90;
     double upperBound = 300;
     double maxLowerBound = 150;
-    double stepBound = 1;
+    double stepBound = 5;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;
     QVector<int> tempVector;
@@ -123,6 +117,7 @@ private:
     QVector<int> filterDataVector;
     QVector<int> boundaryDataVector;
     QVector<int> externalBoundaryVector;
+    QVector<int> blackListVector;
     int* resultDims;
     int   numberOfAddedPoint = 0;
     double* dataArray;

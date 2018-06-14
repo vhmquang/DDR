@@ -6,7 +6,7 @@ class lineFunction
 {
 public:
     lineFunction();
-    lineFunction(double angle, int x, int y);
+    void setNewValue(double angle, int x, int y);
     double getSlope(double angle);
     double getConstant(int x, int y);
     bool isPassThroughPoint(int x, int y);

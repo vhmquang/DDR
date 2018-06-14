@@ -2,14 +2,7 @@
 #define _USE_MATH_DEFINES
 #include "math.h"
 lineFunction::lineFunction(){
-
 }
-lineFunction::lineFunction(double angle, int x, int y)
-{
-    slope = lineFunction::getSlope(angle*(M_PI)/180);
-    constant = lineFunction::getConstant(x,y);
-}
-
 double lineFunction::getSlope(double angle){
     double x = tan(angle);
     return x;
@@ -26,4 +19,8 @@ bool lineFunction::isPassThroughPoint(int x, int y){
         return true;
     }
     else return false;
+}
+void lineFunction::setNewValue(double angle, int x, int y){
+    slope = lineFunction::getSlope(angle*(M_PI)/180);
+    constant = lineFunction::getConstant(x,y);
 }
