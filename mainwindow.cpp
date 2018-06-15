@@ -68,12 +68,9 @@ void MainWindow::drawDCMSeries(std::string folderDCM)
         qDebug() << imageDims[0];
         qDebug() << *(imageDims+1);
         qDebug() << *(imageDims+2);
-        qDebug() << readerDCMSeries->GetPixelRepresentation();
         qDebug() << *_pixelSpacing;
         qDebug() << *(_pixelSpacing+1);
         qDebug() << *(_pixelSpacing+2);
-        qDebug() << readerDCMSeries->GetBitsAllocated();
-        qDebug() << readerDCMSeries->GetRescaleSlope();
     }
     catch (int err){ //catch error if there are no DICOM files
         if (err <=0){
@@ -456,7 +453,8 @@ void MainWindow:: clockWiseTrace(int z){
     int distance = 1;
     int maxDistance = 2;
     int countRetry = 0;
-    int numberOfRetry = 2;
+    int numberOfRetry = 5;
+    int requiredPoint = 30;
     while(isRunning){
         if (isFirstPoint)
         {
@@ -469,7 +467,7 @@ void MainWindow:: clockWiseTrace(int z){
             //qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
             if (nextPoint == -1)
             {
-                if (tempVector.size() < 15)
+                if (tempVector.size() < requiredPoint)
                 {
                     qDebug() << "Retry count:" << countRetry;
                     countRetry++;
@@ -480,7 +478,7 @@ void MainWindow:: clockWiseTrace(int z){
                 else
                 {
                     externalBoundaryVector.append(tempVector);
-                    qDebug() << "Fi nish extract boundary of slice: " << z << "with external point: " << externalBoundaryVector.size();
+                    qDebug() << "Finish extract boundary of slice: " << z << "with external point: " << externalBoundaryVector.size();
                     return;
                 }
             }
@@ -514,10 +512,10 @@ void MainWindow:: clockWiseTrace(int z){
         else
         {
             nextPoint = findNextPoint(distance,currPoint,prevPoint,z);
-           // qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
+            // qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
             if (nextPoint == -1)
             {
-                if (tempVector.size() < 15)
+                if (tempVector.size() < requiredPoint)
                 {
                     qDebug() << "Retry count:" << countRetry;
                     countRetry++;
@@ -584,23 +582,18 @@ void MainWindow:: clockWiseTrace(int z){
     }
 }
 
-void MainWindow:: extractDICOMData(){
-    qDebug() <<"Extract DICOM data";
-    int width = *imageDims;
-    int height = *(imageDims +1);
-    int depth = *(imageDims+2);
+void MainWindow:: extractDICOMData(int z){
+    qDebug() <<"Extract DICOM data for slice z" << z ;
     double temp;
     int index;
-    dataArray = new double[width*height*depth] ;
-    for (int z = 0; z < imageDims[2]; z++ ){
-        for (int y = imageDims[1] - 1; y >=0  ;y--){
-            for (int x = 0; x < imageDims[0]; x++){
-                index = getOffSet(x,y,z,imageDims);
-                temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
-                dataArray[index] = temp;
-            }
+    for (int y = imageDims[1] - 1; y >=0  ;y--){
+        for (int x = 0; x < imageDims[0]; x++){
+            index = getOffSet(x,y,0,imageDims);
+            temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
+            dataArray.insert(index,temp);
         }
     }
+    qDebug() << "Size" <<dataArray.size();
 }
 
 void MainWindow::findBoundaryPoint(){
@@ -645,56 +638,57 @@ bool MainWindow::isBoundaryPoint(int x, int y ,int z,double lowerValue, double u
     int tempIndex = 0;
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x2,y1,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
+
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x2,y,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x2,y2,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x,y2,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x,y1,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x1,y,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x1,y1,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
     }
     if (x1 < dims[0] && x2 >= 0 && y1 < dims[1] && y2 >= 0){
         tempIndex = getOffSet(x1,y2,z,dims);
-        if (dataArray[tempIndex] < lowerValue || dataArray[tempIndex] > upperValue)
+        if (  dataArray.value(tempIndex) <= lowerValue ||   dataArray.value(tempIndex) >= upperValue)
         {   isValid = true;
             return isValid;
         }
@@ -724,8 +718,7 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     double* spacing = readerDCMSeries->GetPixelSpacing();
     int maxDimension = numberOfAddedPoint*numberOfAddedPoint*depth;
     int _pointAdd = int(spacing[2]/spacing[1])+10;
-    //Extract DICOM data
-    extractDICOMData();
+
     /*
     //Calculate data for new grid
     for (int z = 0; z < imageDims[2]; z++ ){
@@ -756,54 +749,64 @@ void MainWindow::on_actionSave_as_xyz_triggered()
         modifiedDataVector.append(tempVector);
         QVector<QVector<double>> same = modifiedDataVector;
     }*/
-    for (int z = 0; z < resultDims[2]; z++){
+    for (int z = 0; z < resultDims[2]; z++)
+    {
         filterDataVector.clear();
         boundaryDataVector.clear();
         tempVector.clear();
         // qDebug() << "Size of filter boundary tempo external: " << filterDataVector.size() << boundaryDataVector.size()<<tempVector.size() <<externalBoundaryVector.size();
         lowerBound = defaultLowerBound;
         blackListVector.clear();
-        filterVectorByThreshold(lowerBound, upperBound, resultDims, z);
+        dataArray.clear();
+        extractDICOMData(z);
+        filterVectorByThreshold(lowerBound, upperBound, resultDims, 0);
         findBoundaryPoint();
-        clockWiseTrace(z);
+        clockWiseTrace(0);
     }
     //qDebug() << externalBoundaryVector.size();
-    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
-    printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
+    //    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
+    // printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
     printXYZfile("externalBoundaryData.xyz",externalBoundaryVector,resultDims,imageSpacing);
 
 }
 
-void MainWindow::printXYZfile(QString filename, QVector<int> data, int *dims, double *spacing){
+void MainWindow::printXYZfile(QString filename, QVector<QVector<int>> data, int *dims, double *spacing){
     QString filename1 = filename;
     QFile file( filename1 );
+    QVector<int> temp;
     double localX;
     double localY;
     double localZ;
+    int count = 0;
     if ( file.open(QIODevice::ReadWrite | QIODevice::Text) )
     {
         QTextStream stream( &file );
         for (int i = 0; i < data.size() ; i++)
         {
-            int* location = indexTo3D(data.value(i),dims);
-            localX = location[0] * spacing[0];
-            localY= location[1] * spacing[1];
-            localZ = location[2] * spacing[2];
-            stream << localX << ' ';
-            stream << localY << ' ';
-            stream << localZ << ' ';
-            stream << '\n';
-            delete []location;
+            temp = data.at(i);
+            for (int j = 0; j < temp.size(); j++)
+            {
+                int* location = indexTo3D(temp.value(j),dims);
+                localX = location[0] * spacing[0];
+                localY= location[1] * spacing[1];
+                localZ = count * spacing[2];
+                stream << localX << ' ';
+                stream << localY << ' ';
+                stream << localZ << ' ';
+                stream << '\n';
+                delete []location;
+            }
+            count++;
         }
     }
 }
-void MainWindow::filterVectorByThreshold(double  lower, double upper, int* dims,int z){
+void MainWindow::filterVectorByThreshold(double  lower, double upper, int* dims, int z){
     for (int y = dims[1] - 1; y >=0 ; y--)
     {
         for (int x = 0; x < dims[0]; x++)
         {
             int tempIndex = getOffSet(x,y,z,dims);
-            if (dataArray[tempIndex] <= upper && dataArray[tempIndex] >= lower)
+            if ( dataArray.value(tempIndex) <= upper && dataArray.value(tempIndex) >= lower)
             {
                 filterDataVector.append(tempIndex);
             }
@@ -812,6 +815,9 @@ void MainWindow::filterVectorByThreshold(double  lower, double upper, int* dims,
     qDebug() << "Size of filterDataVector" << filterDataVector.size();
 }
 
+void MainWindow::fillHoleByBenzier(int distance){
+
+}
 void MainWindow::on__2D_Slider_valueChanged(int value)
 {
     imageViewerDCMSeries->SetSlice(value);
@@ -827,7 +833,7 @@ void MainWindow::on_actionGenerate_3D_Model_triggered()
     imageFilter->SetThresholdCells(500);
    // imageFilter->SetExtent(0,400,0,400,0,400);
     imageFilter->Update();*/
-    qDebug("generate data");
+    //qDebug("generate data");
     vtkSmartPointer<vtkXMLPolyDataReader> reader =
             vtkSmartPointer<vtkXMLPolyDataReader>::New();
     reader->SetFileName("range400.vtp");

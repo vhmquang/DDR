@@ -41,6 +41,7 @@
 #include <QVector>
 #include <math.h>
 #include <linefunction.h>
+#include <QHash>
 namespace Ui {
 class MainWindow;
 }
@@ -82,7 +83,7 @@ private slots:
 
     int checkStartPosition(int prevPoint, int currPoint);
 
-    void printXYZfile(QString filename, QVector<int> data, int* dims, double *spacing);
+    void printXYZfile(QString filename, QVector<QVector<int>> data, int* dims, double *spacing);
 
     void filterVectorByThreshold(double  lower, double upper, int *dims, int z);
 
@@ -90,9 +91,12 @@ private slots:
 
     int findFirstPoint(int z);
 
-    void extractDICOMData();
+    void extractDICOMData(int z);
 
     void findBoundaryPoint();
+
+    void fillHoleByBenzier(int distance);
+
 private:
     Ui::MainWindow *ui;
 
@@ -116,11 +120,11 @@ private:
     QVector<QVector<int>> finalVector;
     QVector<int> filterDataVector;
     QVector<int> boundaryDataVector;
-    QVector<int> externalBoundaryVector;
+    QVector<QVector<int>> externalBoundaryVector;
     QVector<int> blackListVector;
     int* resultDims;
     int   numberOfAddedPoint = 0;
-    double* dataArray;
+    QHash<int,double> dataArray;
     vtkSmartPointer<vtkDICOMImageReader> readerDCMSeries = vtkSmartPointer<vtkDICOMImageReader>::New();
     vtkSmartPointer<vtkImageData> imageData = vtkSmartPointer<vtkImageData>::New();
     vtkSmartPointer<vtkThreshold> threshHold = vtkSmartPointer<vtkThreshold>::New();
