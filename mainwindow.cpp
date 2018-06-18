@@ -419,7 +419,7 @@ int MainWindow::findNextPoint(int distance, int currPoint, int prevPoint, int z)
             }
         }
     }
-    qDebug() << "Can't find next point at distance" << distance;
+    // qDebug() << "Can't find next point at distance" << distance;
     delete []currPointLocation;
     delete []prevPointLocation;
     return -2;
@@ -438,6 +438,7 @@ int MainWindow::findFirstPoint(int z){
             }
         }
     }
+    return -2;
 }
 // clockWiseTrace function, dung de tinh nextPoint index
 void MainWindow:: clockWiseTrace(int z){
@@ -450,10 +451,11 @@ void MainWindow:: clockWiseTrace(int z){
     int currPoint;
     int prevPoint;
     int nextPoint;
-    int distance = 1;
-    int maxDistance = 2;
+    int defaultDistance = 1;
+    int distance = defaultDistance;
+    int maxDistance = 3;
     int countRetry = 0;
-    int numberOfRetry = 5;
+    int numberOfRetry = 2;
     int requiredPoint = 30;
     while(isRunning){
         if (isFirstPoint)
@@ -469,14 +471,26 @@ void MainWindow:: clockWiseTrace(int z){
             {
                 if (tempVector.size() < requiredPoint)
                 {
-                    qDebug() << "Retry count:" << countRetry;
-                    countRetry++;
-                    isFirstPoint = true;
-                    tempVector.clear();
-                    blackListVector.append(firstPoint);
+                    //  qDebug() << "Retry count:" << countRetry;
+                    if(countRetry >= numberOfRetry)
+                    {
+                        distance++;
+                        isFirstPoint = true;
+                        tempVector.clear();
+                        blackListVector.clear();
+                        countRetry = 0;
+                        qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                    }
+                    else
+                    {   countRetry++;
+                        isFirstPoint = true;
+                        tempVector.clear();
+                        blackListVector.append(firstPoint);
+                    }
                 }
                 else
                 {
+                    fillHoleByBenzier(distance,0);
                     externalBoundaryVector.append(tempVector);
                     qDebug() << "Finish extract boundary of slice: " << z << "with external point: " << externalBoundaryVector.size();
                     return;
@@ -486,16 +500,16 @@ void MainWindow:: clockWiseTrace(int z){
             {
                 if(countRetry >= numberOfRetry)
                 {
-                    qDebug() << "Retry count:" << countRetry;
                     distance++;
                     isFirstPoint = true;
                     tempVector.clear();
+                    blackListVector.clear();
                     countRetry = 0;
-                    //qDebug() << "Retry: " << countRetry;
+                    qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
                 }
                 else
                 {
-                    qDebug() << "Retry count:" << countRetry;
+                    // qDebug() << "Retry count:" << countRetry;
                     countRetry++;
                     isFirstPoint = true;
                     tempVector.clear();
@@ -517,14 +531,28 @@ void MainWindow:: clockWiseTrace(int z){
             {
                 if (tempVector.size() < requiredPoint)
                 {
-                    qDebug() << "Retry count:" << countRetry;
-                    countRetry++;
-                    isFirstPoint = true;
-                    tempVector.clear();
-                    blackListVector.append(firstPoint);
+                    // qDebug() << "Retry count:" << countRetry;
+                    if(countRetry >= numberOfRetry)
+                    {
+                        distance++;
+                        isFirstPoint = true;
+                        tempVector.clear();
+                        blackListVector.clear();
+                        countRetry = 0;
+                        qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                    }
+                    else
+                    {
+                        // qDebug() << "Retry count:" << countRetry;
+                        countRetry++;
+                        isFirstPoint = true;
+                        tempVector.clear();
+                        blackListVector.append(firstPoint);
+                    }
                 }
                 else
                 {
+                    fillHoleByBenzier(distance,0);
                     externalBoundaryVector.append(tempVector);
                     qDebug() << "Finish extract boundary of slice: " << z << "with external point: " << externalBoundaryVector.size();
                     return;
@@ -534,15 +562,17 @@ void MainWindow:: clockWiseTrace(int z){
             {
                 if(countRetry >= numberOfRetry)
                 {
-                    qDebug() << "Retry count:" << countRetry;
                     distance++;
                     isFirstPoint = true;
                     tempVector.clear();
+                    blackListVector.clear();
                     countRetry = 0;
+                    // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+
                 }
                 else
                 {
-                    qDebug() << "Retry count:" << countRetry;
+                    // qDebug() << "Retry count:" << countRetry;
                     countRetry++;
                     isFirstPoint = true;
                     tempVector.clear();
@@ -567,7 +597,7 @@ void MainWindow:: clockWiseTrace(int z){
             else
             {
                 lowerBound = lowerBound + stepBound;
-                distance = 1;
+                distance = defaultDistance;
                 isFirstPoint = true;
                 countRetry = 0;
                 filterDataVector.clear();
@@ -754,6 +784,7 @@ void MainWindow::on_actionSave_as_xyz_triggered()
         filterDataVector.clear();
         boundaryDataVector.clear();
         tempVector.clear();
+        fillVector.clear();
         // qDebug() << "Size of filter boundary tempo external: " << filterDataVector.size() << boundaryDataVector.size()<<tempVector.size() <<externalBoundaryVector.size();
         lowerBound = defaultLowerBound;
         blackListVector.clear();
@@ -767,10 +798,12 @@ void MainWindow::on_actionSave_as_xyz_triggered()
     //    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
     // printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
     printXYZfile("externalBoundaryData.xyz",externalBoundaryVector,resultDims,imageSpacing);
-
+    qDebug() << fillVector.size();
+    //  printSingleXYZfile("fillData.xyz",fillVector,resultDims,imageSpacing);
 }
 
-void MainWindow::printXYZfile(QString filename, QVector<QVector<int>> data, int *dims, double *spacing){
+
+void MainWindow::printXYZfile(QString filename, QVector<QVector<int> > data, int *dims, double *spacing){
     QString filename1 = filename;
     QFile file( filename1 );
     QVector<int> temp;
@@ -787,9 +820,9 @@ void MainWindow::printXYZfile(QString filename, QVector<QVector<int>> data, int 
             for (int j = 0; j < temp.size(); j++)
             {
                 int* location = indexTo3D(temp.value(j),dims);
-                localX = location[0] * spacing[0];
-                localY= location[1] * spacing[1];
-                localZ = count * spacing[2];
+                localX = location[0] ;
+                localY= location[1];
+                localZ = count ;
                 stream << localX << ' ';
                 stream << localY << ' ';
                 stream << localZ << ' ';
@@ -797,6 +830,29 @@ void MainWindow::printXYZfile(QString filename, QVector<QVector<int>> data, int 
                 delete []location;
             }
             count++;
+        }
+    }
+}
+void MainWindow::printSingleXYZfile(QString filename, QVector<int> data, int *dims, double *spacing){
+    QString filename2 = filename;
+    QFile file2( filename2 );
+    double localX;
+    double localY;
+    double localZ;
+    if ( file2.open(QIODevice::ReadWrite | QIODevice::Text) )
+    {
+        QTextStream stream( &file2 );
+        for (int i = 0; i < data.size() ; i++)
+        {
+            int* location = indexTo3D(data.value(i),dims);
+            localX = location[0] * spacing[0];
+            localY= location[1] * spacing[1];
+            localZ = location[2] * spacing[2];
+            stream << localX << ' ';
+            stream << localY << ' ';
+            stream << localZ << ' ';
+            stream << '\n';
+            delete []location;
         }
     }
 }
@@ -815,8 +871,98 @@ void MainWindow::filterVectorByThreshold(double  lower, double upper, int* dims,
     qDebug() << "Size of filterDataVector" << filterDataVector.size();
 }
 
-void MainWindow::fillHoleByBenzier(int distance){
+void MainWindow::fillHoleByBenzier(int distance, int z){
+    double x;
+    double y;
+    int index;
+    if (distance >  1)
+    {
+        for (int i = 0; i < tempVector.size(); i++)
+        {
+            if (i == 0){
+                int* p0Location = indexTo3D(tempVector.at(tempVector.size() - 1), resultDims);
+                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
+                int* p2Location = indexTo3D(tempVector.at(i+1), resultDims);
+                int x0 = p0Location[0];
+                int x1 = p1Location[0];
+                int x2 = p2Location[0];
+                int y0 = p0Location[1];
+                int y1 = p1Location[1];
+                int y2 = p2Location[1];
+                for (double t = 0; t <=1; t+=0.05)
+                {
+                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+                    index = getOffSet(round(x),round(y),z,resultDims);
+                    if (!tempVector.contains(index) && !fillVector.contains(index))
+                    {
+                        fillVector.append(index);
+                    }
+                }
+                delete[] p0Location;
+                delete[] p1Location;
+                delete[] p2Location;
 
+            }
+            else if (i == tempVector.size() - 1)
+            {
+                int* p0Location = indexTo3D(tempVector.at(i-1), resultDims);
+                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
+                int* p2Location = indexTo3D(tempVector.at(0), resultDims);
+                int x0 = p0Location[0];
+                int x1 = p1Location[0];
+                int x2 = p2Location[0];
+                int y0 = p0Location[1];
+                int y1 = p1Location[1];
+                int y2 = p2Location[1];
+                for (double t = 0; t <=1; t+=0.1)
+                {
+                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+                    index = getOffSet(round(x),round(y),z,resultDims);
+                    if (!tempVector.contains(index) && !fillVector.contains(index))
+                    {
+                        fillVector.append(index);
+                    }
+                }
+                delete[] p0Location;
+                delete[] p1Location;
+                delete[] p2Location;
+            }
+            else
+            {
+                int* p0Location = indexTo3D(tempVector.at(i-1), resultDims);
+                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
+                int* p2Location = indexTo3D(tempVector.at(i+1), resultDims);
+                int x0 = p0Location[0];
+                int x1 = p1Location[0];
+                int x2 = p2Location[0];
+                int y0 = p0Location[1];
+                int y1 = p1Location[1];
+                int y2 = p2Location[1];
+                for (double t = 0; t <=1; t+=0.1)
+                {
+                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+                    index = getOffSet(round(x),round(y),z,resultDims);
+                    if (!tempVector.contains(index) && !fillVector.contains(index))
+                    {
+                        fillVector.append(index);
+                    }
+                }
+                delete[] p0Location;
+                delete[] p1Location;
+                delete[] p2Location;
+            }
+        }
+        if (fillVector.size()>0)
+        {
+            tempVector.append(fillVector);
+        }
+        fillVector.clear();
+    }
+    else
+        return;
 }
 void MainWindow::on__2D_Slider_valueChanged(int value)
 {

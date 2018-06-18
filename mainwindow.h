@@ -85,6 +85,8 @@ private slots:
 
     void printXYZfile(QString filename, QVector<QVector<int>> data, int* dims, double *spacing);
 
+    void printSingleXYZfile(QString filename, QVector<int> data, int* dims, double *spacing);
+
     void filterVectorByThreshold(double  lower, double upper, int *dims, int z);
 
     double startingAngle(int prevPoint, int currPoint);
@@ -95,7 +97,8 @@ private slots:
 
     void findBoundaryPoint();
 
-    void fillHoleByBenzier(int distance);
+    void fillHoleByBenzier(int distance, int z);
+
 
 private:
     Ui::MainWindow *ui;
@@ -109,11 +112,11 @@ private:
     int firstPoint;
     int resultSize;
     int* finalResult;
-    double lowerBound = 90;
-    double defaultLowerBound = 90;
-    double upperBound = 300;
-    double maxLowerBound = 150;
-    double stepBound = 5;
+    double lowerBound = 400;
+    double defaultLowerBound = 400;
+    double upperBound = 1200;
+    double maxLowerBound = 1200;
+    double stepBound = 100;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;
     QVector<int> tempVector;
@@ -122,6 +125,7 @@ private:
     QVector<int> boundaryDataVector;
     QVector<QVector<int>> externalBoundaryVector;
     QVector<int> blackListVector;
+    QVector<int> fillVector;
     int* resultDims;
     int   numberOfAddedPoint = 0;
     QHash<int,double> dataArray;
