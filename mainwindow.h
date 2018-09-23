@@ -112,10 +112,10 @@ private:
     int firstPoint;
     int resultSize;
     int* finalResult;
-    double lowerBound = 400;
-    double defaultLowerBound = 400;
-    double upperBound = 1200;
-    double maxLowerBound = 1200;
+    double lowerBound = -1000;
+    double defaultLowerBound = -1000;
+    double upperBound = 100;
+    double maxLowerBound = 100;
     double stepBound = 100;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;

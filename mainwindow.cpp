@@ -453,10 +453,10 @@ void MainWindow:: clockWiseTrace(int z){
     int nextPoint;
     int defaultDistance = 1;
     int distance = defaultDistance;
-    int maxDistance = 3;
+    int maxDistance = 10;
     int countRetry = 0;
     int numberOfRetry = 2;
-    int requiredPoint = 30;
+    int requiredPoint = 20;
     while(isRunning){
         if (isFirstPoint)
         {
@@ -479,7 +479,7 @@ void MainWindow:: clockWiseTrace(int z){
                         tempVector.clear();
                         blackListVector.clear();
                         countRetry = 0;
-                        qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                       // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
                     }
                     else
                     {   countRetry++;
@@ -505,7 +505,7 @@ void MainWindow:: clockWiseTrace(int z){
                     tempVector.clear();
                     blackListVector.clear();
                     countRetry = 0;
-                    qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                   // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
                 }
                 else
                 {
@@ -539,7 +539,7 @@ void MainWindow:: clockWiseTrace(int z){
                         tempVector.clear();
                         blackListVector.clear();
                         countRetry = 0;
-                        qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                        //qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
                     }
                     else
                     {
@@ -604,9 +604,9 @@ void MainWindow:: clockWiseTrace(int z){
                 boundaryDataVector.clear();
                 tempVector.clear();
                 blackListVector.clear();
+                qDebug() << "Increase lowerBound by :"<< stepBound <<" to: " << lowerBound;
                 filterVectorByThreshold(lowerBound, upperBound, resultDims,z);
                 findBoundaryPoint();
-                qDebug() << "Increase lowerBound by 5 to: " << lowerBound;
             }
         }
     }
