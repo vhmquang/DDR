@@ -4,6 +4,12 @@
 #include <QMessageBox>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include "QThread"
+#include "QtConcurrent/QtConcurrent"
+#include "QtConcurrent/qtconcurrentrun.h"
+#include "QFuture"
+#include "QThreadPool"
+#include "QFutureSynchronizer"
 VTK_MODULE_INIT(vtkRenderingOpenGL2) //initialize object factory for Marching Cubes
 VTK_MODULE_INIT(vtkRenderingVolumeOpenGL2) //initialize object factory for Ray Caster
 VTK_MODULE_INIT(vtkInteractionStyle) //initialize object factory for default interation style in 2D
@@ -52,6 +58,7 @@ void MainWindow::drawDCMSeries(std::string folderDCM)
     try{
         // folderDCM = "C:\\Users\\vhmquang\\Documents\\build-Master3D-Desktop_Qt_5_9_2_MSVC2017_64bit-Debug\\Marching Man";
         readerDCMSeries->SetDirectoryName(folderDCM.c_str()); //read the directory
+        //readerDCMSeries->SetMemoryRowOrderToFileNative();
         readerDCMSeries->Update(); //update directory
         imageViewerDCMSeries->SetInputConnection(readerDCMSeries->GetOutputPort()); //get dataset to viewer
         sliceMin = imageViewerDCMSeries->GetSliceMin();
@@ -81,7 +88,8 @@ void MainWindow::drawDCMSeries(std::string folderDCM)
     }
 
 }
-double MainWindow::calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data){
+/*
+ * double MainWindow::calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data){
     double q11,  q12,  q21,  q22,  x1,  x2,  y1,  y2,x,y ;
     x = pointX * xSpacing;
     y = pointY * ySpacing;
@@ -100,7 +108,8 @@ double MainWindow::calPointValue(int beginX,int beginY,double pointX,double poin
     double result = bilinearInterpolation(q11,q12,q21,q22,x1,x2,y1,y2,x,y);
     return result;
 }
-int MainWindow::getOffSet(int x, int y, int z, int* dims){
+*/
+int getOffSet(int x, int y, int z, int* dims){
     int offset = x + y * dims[1] + z * dims[1] * dims[0];
     return offset;
 }
@@ -110,7 +119,7 @@ int MainWindow::getOffSet2D(int x, int y,int* dims){
     return offset;
 }
 
-int* MainWindow::indexTo3D (int index, int* dims){
+int* indexTo3D (int index, int* dims){
     int* result = new int[3];
     int z = index /(dims[0]*dims[1]);
     index -= (z * dims[0] * dims[1]);
@@ -139,7 +148,7 @@ double MainWindow::bilinearInterpolation(double q11, double q12, double q21, dou
                 );
 }
 
-QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, int startingPoint, int z){
+QVector<int> getAllIndexFromKDistance(int position, int distance, int startingPoint, int z, int* resultDims){
     QVector<int> resultArray ;
     QVector<int> topLeft ;
     QVector<int> topRight ;
@@ -153,11 +162,12 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     int result = 0;
     int tempX;
     int tempY;
+    int i;
     /*
      Case 1: Top Left
     */
     tempX = x - distance;
-    for (int i = 0; i <= distance; i++){
+    for ( i = 0; i <= distance; i++){
         tempY = y - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -165,7 +175,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
         }
     }
     tempY = y - distance;
-    for (int i = (distance - 1); i > 0; i--){
+    for ( i = (distance - 1); i > 0; i--){
         tempX = x - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -176,7 +186,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     Case 2: Top Right
     */
     tempY = y - distance;
-    for (int i = 0 ; i <= distance; i++){
+    for ( i = 0 ; i <= distance; i++){
         tempX = x + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -184,7 +194,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
         }
     }
     tempX = x + distance;
-    for (int i = (distance - 1); i > 0; i--){
+    for ( i = (distance - 1); i > 0; i--){
         tempY = y - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -195,7 +205,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     Case 3: Bottom Right
     */
     tempX = x + distance;
-    for (int i = 0 ; i <= distance; i++ ){
+    for ( i = 0 ; i <= distance; i++ ){
         tempY = y + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -203,7 +213,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
         }
     }
     tempY = y + distance;
-    for (int i = (distance - 1) ; i > 0; i-- ){
+    for ( i = (distance - 1) ; i > 0; i-- ){
         tempX = x + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -215,7 +225,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     Case 4: Bottom Left
     */
     tempY = y + distance;
-    for (int i = 0; i <= distance ; i++ ){
+    for ( i = 0; i <= distance ; i++ ){
         tempX = x - i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -223,7 +233,7 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
         }
     }
     tempX = x - distance;
-    for (int i = (distance - 1 ); i > 0 ; i-- ){
+    for ( i = (distance - 1 ); i > 0 ; i-- ){
         tempY = y + i;
         if (tempX >= 0 && tempX < width && tempY >= 0 && tempY < height ){
             result = getOffSet(tempX,tempY,z,resultDims);
@@ -259,8 +269,20 @@ QVector<int> MainWindow::getAllIndexFromKDistance(int position, int distance, in
     delete []location;
     return resultArray;
 }
+double startingAngle(int prevPoint, int currPoint,int* resultDims){
+    double angle = 0;
+    if (prevPoint == 0){
+        return angle = 90;
+    }
+    int* prevLocation = indexTo3D(prevPoint,resultDims);
+    int* currLocation = indexTo3D(currPoint,resultDims);
+    angle =  atan2(prevLocation[1] - currLocation[1], prevLocation[0] - currLocation[0])* 180 / M_PI;
+    delete []prevLocation;
+    delete []currLocation;
+    return angle;
+}
 
-int MainWindow::checkStartPosition(int prevPoint,int currPoint){
+int checkStartPosition(int prevPoint,int currPoint, int* resultDims){
     int* currPosition = indexTo3D(currPoint,resultDims);
     int* prevPosition = indexTo3D(prevPoint,resultDims);
     int prevX = prevPosition[0];
@@ -293,7 +315,7 @@ int MainWindow::checkStartPosition(int prevPoint,int currPoint){
         return 0;
     }
 }
-int MainWindow::findNextPoint(int distance, int currPoint, int prevPoint, int z){
+int findNextPoint(int distance, int currPoint, int prevPoint, int z, int* resultDims, QVector<int> boundaryDataVector,QVector<int> tempVector,int firstPoint){
     lineFunction line;
     double angle;
     double stepAngle = 0.5;
@@ -308,6 +330,9 @@ int MainWindow::findNextPoint(int distance, int currPoint, int prevPoint, int z)
     int prevY = prevPointLocation[1];
     int nextPoint;
     bool isPass;
+    int i;
+    int k;
+    int vectorIndex;
     QVector<int> allIndexFromKDistance;
     if (prevX == currentX){
         if (prevY < currentY)
@@ -315,19 +340,20 @@ int MainWindow::findNextPoint(int distance, int currPoint, int prevPoint, int z)
         else
             angle = 90;
     }
-    else{
-        angle = startingAngle(prevPoint,currPoint);
+    else
+    {
+        angle = startingAngle(prevPoint,currPoint, resultDims);
     }
     if (prevPoint == 0){
         angle = 89.5;
     }
-    position = checkStartPosition(prevPoint,currPoint);
-    for (int i = 0; i < 720; i++)
+    position = checkStartPosition(prevPoint,currPoint,resultDims);
+    for ( i = 0; i < 720; i++)
     {
         angle = angle + stepAngle;
         if (angle == -90 || angle == 90 || angle == 270 || angle == -270 || angle == 450  || angle == 630)
         {
-            for (int k = 1 ; k <= distance; k++)
+            for ( k = 1 ; k <= distance; k++)
             {
                 if (position == 0)
                 {
@@ -366,10 +392,10 @@ int MainWindow::findNextPoint(int distance, int currPoint, int prevPoint, int z)
         else
         {
             line.setNewValue(angle,currPointLocation[0],currPointLocation[1]);
-            for (int k = 1 ; k <= distance; k++)
+            for ( k = 1 ; k <= distance; k++)
             {
-                allIndexFromKDistance = getAllIndexFromKDistance(currPoint,k,1,z);
-                for (int vectorIndex = 0 ; vectorIndex < allIndexFromKDistance.size();vectorIndex++)
+                allIndexFromKDistance = getAllIndexFromKDistance(currPoint,k,1,z,resultDims);
+                for (vectorIndex = 0 ; vectorIndex < allIndexFromKDistance.size();vectorIndex++)
                 {
                     nextPoint = allIndexFromKDistance.at(vectorIndex);
                     int* nextPointLocation = indexTo3D(nextPoint,resultDims);
@@ -424,242 +450,7 @@ int MainWindow::findNextPoint(int distance, int currPoint, int prevPoint, int z)
     delete []prevPointLocation;
     return -2;
 }
-
-int MainWindow::findFirstPoint(int z){
-    int index;
-    for (int y = imageDims[1] - 1; y >=0  ;y--)
-    {
-        for (int x = 0; x < imageDims[0]; x++)
-        {
-            index = getOffSet(x,y,z,resultDims);
-            if (boundaryDataVector.contains(index) && !blackListVector.contains(index))
-            {
-                return index;
-            }
-        }
-    }
-    return -2;
-}
-// clockWiseTrace function, dung de tinh nextPoint index
-void MainWindow:: clockWiseTrace(int z){
-    //TODO: Find first point, then find starting angle. For each stepAngle = 0.5, calculate lineQuation
-    // then find all point around 0..k distance and check with equation.
-    // if true then return point, compare with first point. If == FP, exist
-    // else continue to find next point
-    bool isRunning = true;
-    bool isFirstPoint = true;
-    int currPoint;
-    int prevPoint;
-    int nextPoint;
-    int defaultDistance = 1;
-    int distance = defaultDistance;
-    int maxDistance = 10;
-    int countRetry = 0;
-    int numberOfRetry = 2;
-    int requiredPoint = 20;
-    while(isRunning){
-        if (isFirstPoint)
-        {
-            currPoint = findFirstPoint(z);
-            // qDebug() << "Find first point: " << currPoint << "at distance" << distance;
-            firstPoint = currPoint;
-            tempVector.append(firstPoint);
-            isFirstPoint = false;
-            nextPoint = findNextPoint(distance,currPoint,0,z);
-            //qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
-            if (nextPoint == -1)
-            {
-                if (tempVector.size() < requiredPoint)
-                {
-                    //  qDebug() << "Retry count:" << countRetry;
-                    if(countRetry >= numberOfRetry)
-                    {
-                        distance++;
-                        isFirstPoint = true;
-                        tempVector.clear();
-                        blackListVector.clear();
-                        countRetry = 0;
-                       // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
-                    }
-                    else
-                    {   countRetry++;
-                        isFirstPoint = true;
-                        tempVector.clear();
-                        blackListVector.append(firstPoint);
-                    }
-                }
-                else
-                {
-                    fillHoleByBenzier(distance,0);
-                    externalBoundaryVector.append(tempVector);
-                    qDebug() << "Finish extract boundary of slice: " << z << "with external point: " << externalBoundaryVector.size();
-                    return;
-                }
-            }
-            if (nextPoint == -2)
-            {
-                if(countRetry >= numberOfRetry)
-                {
-                    distance++;
-                    isFirstPoint = true;
-                    tempVector.clear();
-                    blackListVector.clear();
-                    countRetry = 0;
-                   // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
-                }
-                else
-                {
-                    // qDebug() << "Retry count:" << countRetry;
-                    countRetry++;
-                    isFirstPoint = true;
-                    tempVector.clear();
-                    blackListVector.append(firstPoint);
-                }
-            }
-            if (nextPoint >= 0)
-            {
-                tempVector.append(nextPoint);
-                prevPoint = currPoint;
-                currPoint = nextPoint;
-            }
-        }
-        else
-        {
-            nextPoint = findNextPoint(distance,currPoint,prevPoint,z);
-            // qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
-            if (nextPoint == -1)
-            {
-                if (tempVector.size() < requiredPoint)
-                {
-                    // qDebug() << "Retry count:" << countRetry;
-                    if(countRetry >= numberOfRetry)
-                    {
-                        distance++;
-                        isFirstPoint = true;
-                        tempVector.clear();
-                        blackListVector.clear();
-                        countRetry = 0;
-                        //qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
-                    }
-                    else
-                    {
-                        // qDebug() << "Retry count:" << countRetry;
-                        countRetry++;
-                        isFirstPoint = true;
-                        tempVector.clear();
-                        blackListVector.append(firstPoint);
-                    }
-                }
-                else
-                {
-                    fillHoleByBenzier(distance,0);
-                    externalBoundaryVector.append(tempVector);
-                    qDebug() << "Finish extract boundary of slice: " << z << "with external point: " << externalBoundaryVector.size();
-                    return;
-                }
-            }
-            if (nextPoint == -2)
-            {
-                if(countRetry >= numberOfRetry)
-                {
-                    distance++;
-                    isFirstPoint = true;
-                    tempVector.clear();
-                    blackListVector.clear();
-                    countRetry = 0;
-                    // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
-
-                }
-                else
-                {
-                    // qDebug() << "Retry count:" << countRetry;
-                    countRetry++;
-                    isFirstPoint = true;
-                    tempVector.clear();
-                    blackListVector.append(firstPoint);
-                }
-            }
-            if (nextPoint >= 0)
-            {
-                tempVector.append(nextPoint);
-                prevPoint = currPoint;
-                currPoint = nextPoint;
-            }
-
-        }
-        if (distance > maxDistance)
-        {
-            if (lowerBound > maxLowerBound)
-            {
-                qDebug() << "Can't extract external boundary of slice: " << z;
-                return;
-            }
-            else
-            {
-                lowerBound = lowerBound + stepBound;
-                distance = defaultDistance;
-                isFirstPoint = true;
-                countRetry = 0;
-                filterDataVector.clear();
-                boundaryDataVector.clear();
-                tempVector.clear();
-                blackListVector.clear();
-                qDebug() << "Increase lowerBound by :"<< stepBound <<" to: " << lowerBound;
-                filterVectorByThreshold(lowerBound, upperBound, resultDims,z);
-                findBoundaryPoint();
-            }
-        }
-    }
-}
-
-void MainWindow:: extractDICOMData(int z){
-    qDebug() <<"Extract DICOM data for slice z" << z ;
-    double temp;
-    int index;
-    for (int y = imageDims[1] - 1; y >=0  ;y--){
-        for (int x = 0; x < imageDims[0]; x++){
-            index = getOffSet(x,y,0,imageDims);
-            temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
-            dataArray.insert(index,temp);
-        }
-    }
-    qDebug() << "Size" <<dataArray.size();
-}
-
-void MainWindow::findBoundaryPoint(){
-    int filterDataIndex;
-    int x;
-    int y;
-    int z;
-    for (int i = 0; i < filterDataVector.size(); i++)
-    {
-        filterDataIndex = filterDataVector.at(i);
-        int* filterDataLocation = indexTo3D(filterDataIndex,resultDims);
-        x = filterDataLocation[0];
-        y = filterDataLocation[1];
-        z = filterDataLocation[2];
-        bool isBoundary = isBoundaryPoint(x,y,z,lowerBound,upperBound,resultDims);
-        if (isBoundary){
-            boundaryDataVector.append(filterDataIndex);
-        }
-        delete []filterDataLocation;
-    }
-    qDebug() << "Size of boundary point" << boundaryDataVector.size();
-}
-double MainWindow::startingAngle(int prevPoint, int currPoint){
-    double angle = 0;
-    if (prevPoint == 0){
-        return angle = 90;
-    }
-    int* prevLocation = indexTo3D(prevPoint,resultDims);
-    int* currLocation = indexTo3D(currPoint,resultDims);
-    angle =  atan2(prevLocation[1] - currLocation[1], prevLocation[0] - currLocation[0])* 180 / M_PI;
-    delete []prevLocation;
-    delete []currLocation;
-    return angle;
-}
-
-bool MainWindow::isBoundaryPoint(int x, int y ,int z,double lowerValue, double upperValue, int* dims){
+bool isBoundaryPoint(int x, int y ,int z,double lowerValue, double upperValue, int* dims,     QHash<int,double> dataArray){
     int x1 = x + 1;
     int x2 = x - 1 ;
     int y1 = y + 1;
@@ -725,6 +516,392 @@ bool MainWindow::isBoundaryPoint(int x, int y ,int z,double lowerValue, double u
     }
     return isValid;
 }
+
+int findFirstPoint(int z, QVector<int> boundaryDataVector, QVector<int> blackListVector, int* imageDims){
+    int index;
+    int y;
+    int x;
+    for (y  = imageDims[1] - 1 ; y >= 0  ;y--)
+    {
+        for ( x = 0; x < imageDims[0]; x++)
+        {
+            index = getOffSet(x,y,z,imageDims);
+            if (boundaryDataVector.contains(index) && !blackListVector.contains(index))
+            {
+                return index;
+            }
+        }
+    }
+    return -2;
+}
+
+QHash<int,double> extractDICOMData(int z, int* imageDims,vtkSmartPointer<vtkImageData> imageData){
+    qDebug() <<"Extract DICOM data for slice z" << z ;
+    QHash<int,double> dataArray   ;
+    double temp;
+    int index;
+    int y;
+    int x;
+    for (y = imageDims[1] - 1; y >=0  ;y--){
+        for (x = 0; x < imageDims[0]; x++){
+            index = getOffSet(x,y,z,imageDims);
+            temp = imageData->GetScalarComponentAsDouble(x,y,z,0);
+            dataArray.insert(index,temp);
+        }
+    }
+    //  qDebug() << "Size" << dataArray.size();
+    return dataArray;
+}
+QVector<int> filterVectorByThreshold(double  lower, double upper, int* dims, int z,QHash<int,double> dataArray){
+    QVector<int> filterDataVector;
+    int y;
+    int x;
+    for ( y = dims[1] - 1; y >=0 ; y--)
+    {
+        for ( x = 0; x < dims[0]; x++)
+        {
+            int tempIndex = getOffSet(x,y,z,dims);
+            if ( dataArray.value(tempIndex) <= upper && dataArray.value(tempIndex) >= lower)
+            {
+                filterDataVector.append(tempIndex);
+            }
+        }
+    }
+    return filterDataVector;
+    // qDebug() << "Size of filterDataVector" << filterDataVector.size();
+}
+
+QVector<int> fillHoleByBenzier(int distance, int z, QVector<int> tempVector,int* resultDims){
+    QVector<int> _fillVector;
+    QVector<int> _tempVector = tempVector;
+    double x;
+    double y;
+    int index;
+    int i;
+    double t;
+    if (distance >  1)
+    {
+        for (i = 0; i < tempVector.size(); i++)
+        {
+            if (i == 0){
+                int* p0Location = indexTo3D(tempVector.at(tempVector.size() - 1), resultDims);
+                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
+                int* p2Location = indexTo3D(tempVector.at(i+1), resultDims);
+                int x0 = p0Location[0];
+                int x1 = p1Location[0];
+                int x2 = p2Location[0];
+                int y0 = p0Location[1];
+                int y1 = p1Location[1];
+                int y2 = p2Location[1];
+                for (t = 0; t <=1; t+=0.05)
+                {
+                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+                    index = getOffSet(round(x),round(y),z,resultDims);
+                    if (!_tempVector.contains(index) && !_fillVector.contains(index))
+                    {
+                        _fillVector.append(index);
+                    }
+                }
+                delete[] p0Location;
+                delete[] p1Location;
+                delete[] p2Location;
+
+            }
+            else if (i == tempVector.size() - 1)
+            {
+                int* p0Location = indexTo3D(tempVector.at(i-1), resultDims);
+                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
+                int* p2Location = indexTo3D(tempVector.at(0), resultDims);
+                int x0 = p0Location[0];
+                int x1 = p1Location[0];
+                int x2 = p2Location[0];
+                int y0 = p0Location[1];
+                int y1 = p1Location[1];
+                int y2 = p2Location[1];
+                for (t = 0; t <=1; t+=0.1)
+                {
+                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+                    index = getOffSet(round(x),round(y),z,resultDims);
+                    if (!_tempVector.contains(index) && !_fillVector.contains(index))
+                    {
+                        _fillVector.append(index);
+                    }
+                }
+                delete[] p0Location;
+                delete[] p1Location;
+                delete[] p2Location;
+            }
+            else
+            {
+                int* p0Location = indexTo3D(tempVector.at(i-1), resultDims);
+                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
+                int* p2Location = indexTo3D(tempVector.at(i+1), resultDims);
+                int x0 = p0Location[0];
+                int x1 = p1Location[0];
+                int x2 = p2Location[0];
+                int y0 = p0Location[1];
+                int y1 = p1Location[1];
+                int y2 = p2Location[1];
+                for (t = 0; t <=1; t+=0.1)
+                {
+                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
+                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
+                    index = getOffSet(round(x),round(y),z,resultDims);
+                    if (!_tempVector.contains(index) && !_fillVector.contains(index))
+                    {
+                        _fillVector.append(index);
+                    }
+                }
+                delete[] p0Location;
+                delete[] p1Location;
+                delete[] p2Location;
+            }
+        }
+        if (_fillVector.size()>0)
+        {
+            tempVector.append(_fillVector);
+        }
+        _fillVector.clear();
+        return _tempVector;
+    }
+    else
+        return _tempVector;
+}
+QVector<int> findBoundaryPoint(QVector<int> filterDataVector, int* resultDims,int lowerBound, int upperBound,QHash<int,double> dataArray){
+    QVector<int> boundaryDataVector;
+    int filterDataIndex;
+    int x;
+    int y;
+    int z;
+    int i;
+    for (i = 0; i < filterDataVector.size(); i++)
+    {
+        filterDataIndex = filterDataVector.at(i);
+        int* filterDataLocation = indexTo3D(filterDataIndex,resultDims);
+        x = filterDataLocation[0];
+        y = filterDataLocation[1];
+        z = filterDataLocation[2];
+        bool isBoundary = isBoundaryPoint(x,y,z,lowerBound,upperBound,resultDims,dataArray);
+        if (isBoundary){
+            boundaryDataVector.append(filterDataIndex);
+        }
+        delete []filterDataLocation;
+    }
+    //qDebug() << "Size of boundary point" << boundaryDataVector.size();
+    return boundaryDataVector;
+}
+void printSingleXYZfile(QString filename, QVector<int> data, int *dims){
+    QString filename2 = filename;
+    QFile file2( filename2 );
+    double localX;
+    double localY;
+    int i;
+    double localZ;
+    if ( file2.open(QIODevice::ReadWrite | QIODevice::Text) )
+    {
+        QTextStream stream( &file2 );
+        for (i = 0; i < data.size() ; i++)
+        {
+            int* location = indexTo3D(data.value(i),dims);
+            localX = location[0] ;
+            localY= location[1] ;
+            localZ = location[2] ;
+            stream << localX << ' ';
+            stream << localY << ' ';
+            stream << localZ << ' ';
+            stream << '\n';
+            delete []location;
+        }
+    }
+}
+QVector<int> clockWiseTrace(int z,int* imageDims,vtkSmartPointer<vtkImageData> imageData){
+    bool isRunning = true;
+    bool isFirstPoint = true;
+    int firstPoint;
+    int currPoint;
+    int prevPoint;
+    int nextPoint;
+    int defaultDistance = 1;
+    int distance = defaultDistance;
+    int maxDistance = 3;
+    int countRetry = 0;
+    int numberOfRetry = 3;
+    int requiredPoint = 35;
+    double _lowerBound = 40;
+    double _upperBound = 200;
+    double _stepBound = 20;
+    QVector<int> _blackListVector;
+    QVector<int> _tempVector;
+    QHash<int,double> dataArray = extractDICOMData(z,imageDims,imageData);
+    QVector<int> _filterDataVector = filterVectorByThreshold(_lowerBound,_upperBound,imageDims,z,dataArray);
+    QVector<int> _boundaryDataVector = findBoundaryPoint(_filterDataVector,imageDims,_lowerBound,_upperBound,dataArray);
+    while(isRunning){
+        if (isFirstPoint)
+        {
+            currPoint = findFirstPoint(z,_boundaryDataVector,_blackListVector,imageDims);
+            // qDebug() << "Find first point: " << currPoint << "at distance" << distance;
+            firstPoint = currPoint;
+            _tempVector.append(firstPoint);
+            isFirstPoint = false;
+            nextPoint = findNextPoint(distance,currPoint,0,z,imageDims,_boundaryDataVector,_tempVector,firstPoint);
+            // qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
+            if (nextPoint == -1)
+            {
+                if (_tempVector.size() < requiredPoint)
+                {
+                    // qDebug() << "Retry count:" << countRetry;
+                    if(countRetry >= numberOfRetry)
+                    {
+                        distance++;
+                        isFirstPoint = true;
+                        _tempVector.clear();
+                        _blackListVector.clear();
+                        countRetry = 0;
+                        // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                    }
+                    else
+                    {   countRetry++;
+                        isFirstPoint = true;
+                        _tempVector.clear();
+                        _blackListVector.append(firstPoint);
+                    }
+                }
+                else
+                {
+                    _tempVector = fillHoleByBenzier(distance,z,_tempVector,imageDims);
+                    qDebug() << "Finish extract boundary data slice" << z;
+                   // printSingleXYZfile("filterDataVector.xyz",_filterDataVector,imageDims);
+                    //printSingleXYZfile("boundaryDataVector.xyz",_boundaryDataVector,imageDims);
+                    return _tempVector;
+                }
+            }
+            if (nextPoint == -2)
+            {
+                if(countRetry >= numberOfRetry)
+                {
+                    distance++;
+                    isFirstPoint = true;
+                    _tempVector.clear();
+                    _blackListVector.clear();
+                    countRetry = 0;
+                    // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                }
+                else
+                {
+                    //qDebug() << "Retry count:" << countRetry;
+                    countRetry++;
+                    isFirstPoint = true;
+                    _tempVector.clear();
+                    _blackListVector.append(firstPoint);
+                }
+            }
+            if (nextPoint >= 0)
+            {
+                _tempVector.append(nextPoint);
+                prevPoint = currPoint;
+                currPoint = nextPoint;
+            }
+        }
+        else
+        {
+            nextPoint = findNextPoint(distance,currPoint,prevPoint,z,imageDims,_boundaryDataVector,_tempVector,firstPoint);
+            // qDebug() << "Find next point: " << nextPoint << "at distance" << distance;
+            if (nextPoint == -1)
+            {
+                if (_tempVector.size() < requiredPoint)
+                {
+                    //qDebug() << "Retry count:" << countRetry;
+                    if(countRetry >= numberOfRetry)
+                    {
+                        distance++;
+                        isFirstPoint = true;
+                        _tempVector.clear();
+                        _blackListVector.clear();
+                        countRetry = 0;
+                        //  qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+                    }
+                    else
+                    {
+                        //qDebug() << "Retry count:" << countRetry;
+                        countRetry++;
+                        isFirstPoint = true;
+                        _tempVector.clear();
+                        _blackListVector.append(firstPoint);
+                    }
+                }
+                else
+                {
+                    _tempVector = fillHoleByBenzier(distance,z,_tempVector,imageDims);
+                    qDebug() << "Finish extract boundary data slice" << z;
+                    //printSingleXYZfile("filterDataVector.xyz",_filterDataVector,imageDims);
+                    //printSingleXYZfile("boundaryDataVector.xyz",_boundaryDataVector,imageDims);
+                    return _tempVector;
+                }
+            }
+            if (nextPoint == -2)
+            {
+                if(countRetry >= numberOfRetry)
+                {
+                    distance++;
+                    isFirstPoint = true;
+                    _tempVector.clear();
+                    _blackListVector.clear();
+                    countRetry = 0;
+                    // qDebug() << "Retry count:" << countRetry <<"Increase distance" << distance;
+
+                }
+                else
+                {
+                    //qDebug() << "Retry count:" << countRetry;
+                    countRetry++;
+                    isFirstPoint = true;
+                    _tempVector.clear();
+                    _blackListVector.append(firstPoint);
+                }
+            }
+            if (nextPoint >= 0)
+            {
+                _tempVector.append(nextPoint);
+                prevPoint = currPoint;
+                currPoint = nextPoint;
+            }
+
+        }
+        if (distance > maxDistance)
+        {
+            if (_lowerBound > _upperBound)
+            {
+                qDebug() << "Can't extract external boundary of slice: " << z;
+                QString filterName = "filterDataVector";
+                filterName.append(z);
+                filterName.append(".xyz");
+                QString boundaryName = "boundaryDataVector";
+                boundaryName.append(z);
+                boundaryName.append(".xyz");
+               // printSingleXYZfile(filterName,_filterDataVector,imageDims);
+                //printSingleXYZfile(boundaryName,_boundaryDataVector,imageDims);
+                return _tempVector;
+            }
+            else
+            {
+                _lowerBound = _lowerBound + _stepBound;
+                distance = defaultDistance;
+                isFirstPoint = true;
+                countRetry = 0;
+                _tempVector.clear();
+                _blackListVector.clear();
+                _filterDataVector.clear();
+                _boundaryDataVector.clear();
+                //qDebug() << "Increase lowerBound by :"<< _stepBound <<" to: " << _lowerBound;
+                _filterDataVector = filterVectorByThreshold(_lowerBound,_upperBound,imageDims,z,dataArray);
+                _boundaryDataVector = findBoundaryPoint(_filterDataVector,imageDims,_lowerBound,_upperBound,dataArray);
+            }
+        }
+    }
+}
+
 void MainWindow::on_actionSave_as_xyz_triggered()
 { 
     int width = *imageDims;
@@ -779,26 +956,30 @@ void MainWindow::on_actionSave_as_xyz_triggered()
         modifiedDataVector.append(tempVector);
         QVector<QVector<double>> same = modifiedDataVector;
     }*/
-    for (int z = 0; z < resultDims[2]; z++)
-    {
-        filterDataVector.clear();
-        boundaryDataVector.clear();
-        tempVector.clear();
-        fillVector.clear();
-        // qDebug() << "Size of filter boundary tempo external: " << filterDataVector.size() << boundaryDataVector.size()<<tempVector.size() <<externalBoundaryVector.size();
-        lowerBound = defaultLowerBound;
-        blackListVector.clear();
-        dataArray.clear();
-        extractDICOMData(z);
-        filterVectorByThreshold(lowerBound, upperBound, resultDims, 0);
-        findBoundaryPoint();
-        clockWiseTrace(0);
+    //  qDebug() << imageData->GetScalarComponentAsDouble(70,267,0,0);
+    int* _imageDims = imageDims;
+    QFutureSynchronizer<QVector<int>> futureSync;
+    QThreadPool::globalInstance()->setMaxThreadCount(3);
+    int z;
+    for (z = 0; z < resultDims[2]; z++){
+        auto f1 = QtConcurrent::run(QThreadPool::globalInstance(),clockWiseTrace,z,_imageDims,imageData);
+        futureSync.addFuture(f1);
+        //  qDebug() << "Number of thread" << QThreadPool::globalInstance()->activeThreadCount();
     }
+
+    futureSync.waitForFinished();
+    auto listFutures = futureSync.futures();
+    int i;
+    for (i = 0; i < listFutures.size(); i++){
+        qDebug() << "Print result" ;
+        externalBoundaryVector.append(listFutures.at(i).result());
+    }
+
     //qDebug() << externalBoundaryVector.size();
-    //    printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
-    // printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
+    //printXYZfile("filterDataVector.xyz",filterDataVector,resultDims,imageSpacing);
+    //printXYZfile("boundaryDataVector.xyz",boundaryDataVector,resultDims,imageSpacing);
     printXYZfile("externalBoundaryData.xyz",externalBoundaryVector,resultDims,imageSpacing);
-    qDebug() << fillVector.size();
+    //qDebug() << fillVector.size();
     //  printSingleXYZfile("fillData.xyz",fillVector,resultDims,imageSpacing);
 }
 
@@ -811,18 +992,20 @@ void MainWindow::printXYZfile(QString filename, QVector<QVector<int> > data, int
     double localY;
     double localZ;
     int count = 0;
+    int i;
+    int j;
     if ( file.open(QIODevice::ReadWrite | QIODevice::Text) )
     {
         QTextStream stream( &file );
-        for (int i = 0; i < data.size() ; i++)
+        for (i = 0; i < data.size() ; i++)
         {
             temp = data.at(i);
-            for (int j = 0; j < temp.size(); j++)
+            for (j = 0; j < temp.size(); j++)
             {
                 int* location = indexTo3D(temp.value(j),dims);
-                localX = location[0] ;
-                localY= location[1];
-                localZ = count ;
+                localX = location[0] * spacing[0];
+                localY= location[1] * spacing[1];
+                localZ = count * spacing[2];
                 stream << localX << ' ';
                 stream << localY << ' ';
                 stream << localZ << ' ';
@@ -833,137 +1016,8 @@ void MainWindow::printXYZfile(QString filename, QVector<QVector<int> > data, int
         }
     }
 }
-void MainWindow::printSingleXYZfile(QString filename, QVector<int> data, int *dims, double *spacing){
-    QString filename2 = filename;
-    QFile file2( filename2 );
-    double localX;
-    double localY;
-    double localZ;
-    if ( file2.open(QIODevice::ReadWrite | QIODevice::Text) )
-    {
-        QTextStream stream( &file2 );
-        for (int i = 0; i < data.size() ; i++)
-        {
-            int* location = indexTo3D(data.value(i),dims);
-            localX = location[0] * spacing[0];
-            localY= location[1] * spacing[1];
-            localZ = location[2] * spacing[2];
-            stream << localX << ' ';
-            stream << localY << ' ';
-            stream << localZ << ' ';
-            stream << '\n';
-            delete []location;
-        }
-    }
-}
-void MainWindow::filterVectorByThreshold(double  lower, double upper, int* dims, int z){
-    for (int y = dims[1] - 1; y >=0 ; y--)
-    {
-        for (int x = 0; x < dims[0]; x++)
-        {
-            int tempIndex = getOffSet(x,y,z,dims);
-            if ( dataArray.value(tempIndex) <= upper && dataArray.value(tempIndex) >= lower)
-            {
-                filterDataVector.append(tempIndex);
-            }
-        }
-    }
-    qDebug() << "Size of filterDataVector" << filterDataVector.size();
-}
 
-void MainWindow::fillHoleByBenzier(int distance, int z){
-    double x;
-    double y;
-    int index;
-    if (distance >  1)
-    {
-        for (int i = 0; i < tempVector.size(); i++)
-        {
-            if (i == 0){
-                int* p0Location = indexTo3D(tempVector.at(tempVector.size() - 1), resultDims);
-                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
-                int* p2Location = indexTo3D(tempVector.at(i+1), resultDims);
-                int x0 = p0Location[0];
-                int x1 = p1Location[0];
-                int x2 = p2Location[0];
-                int y0 = p0Location[1];
-                int y1 = p1Location[1];
-                int y2 = p2Location[1];
-                for (double t = 0; t <=1; t+=0.05)
-                {
-                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
-                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
-                    index = getOffSet(round(x),round(y),z,resultDims);
-                    if (!tempVector.contains(index) && !fillVector.contains(index))
-                    {
-                        fillVector.append(index);
-                    }
-                }
-                delete[] p0Location;
-                delete[] p1Location;
-                delete[] p2Location;
 
-            }
-            else if (i == tempVector.size() - 1)
-            {
-                int* p0Location = indexTo3D(tempVector.at(i-1), resultDims);
-                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
-                int* p2Location = indexTo3D(tempVector.at(0), resultDims);
-                int x0 = p0Location[0];
-                int x1 = p1Location[0];
-                int x2 = p2Location[0];
-                int y0 = p0Location[1];
-                int y1 = p1Location[1];
-                int y2 = p2Location[1];
-                for (double t = 0; t <=1; t+=0.1)
-                {
-                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
-                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
-                    index = getOffSet(round(x),round(y),z,resultDims);
-                    if (!tempVector.contains(index) && !fillVector.contains(index))
-                    {
-                        fillVector.append(index);
-                    }
-                }
-                delete[] p0Location;
-                delete[] p1Location;
-                delete[] p2Location;
-            }
-            else
-            {
-                int* p0Location = indexTo3D(tempVector.at(i-1), resultDims);
-                int* p1Location = indexTo3D(tempVector.at(i),resultDims);
-                int* p2Location = indexTo3D(tempVector.at(i+1), resultDims);
-                int x0 = p0Location[0];
-                int x1 = p1Location[0];
-                int x2 = p2Location[0];
-                int y0 = p0Location[1];
-                int y1 = p1Location[1];
-                int y2 = p2Location[1];
-                for (double t = 0; t <=1; t+=0.1)
-                {
-                    x = (1-t)*(1-t)*x0 + 2*(1-t)*t*x1 + t*t*x2;
-                    y = (1-t)*(1-t)*y0 + 2*(1-t)*t*y1 + t*t*y2;
-                    index = getOffSet(round(x),round(y),z,resultDims);
-                    if (!tempVector.contains(index) && !fillVector.contains(index))
-                    {
-                        fillVector.append(index);
-                    }
-                }
-                delete[] p0Location;
-                delete[] p1Location;
-                delete[] p2Location;
-            }
-        }
-        if (fillVector.size()>0)
-        {
-            tempVector.append(fillVector);
-        }
-        fillVector.clear();
-    }
-    else
-        return;
-}
 void MainWindow::on__2D_Slider_valueChanged(int value)
 {
     imageViewerDCMSeries->SetSlice(value);

@@ -63,41 +63,13 @@ private slots:
 
     void on_actionGenerate_3D_Model_triggered();
 
-    int getOffSet(int x, int y, int z, int* dims);
-
-    bool isBoundaryPoint(int x, int y , int z, double lowerValue, double upperValue, int* dims);
-
-    int* indexTo3D(int index, int* dims);
-
     double bilinearInterpolation(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y);
 
-    double calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data);
-
-    QVector<int>  getAllIndexFromKDistance(int position, int distance, int startingPoint, int z);
-
-    void clockWiseTrace(int z);
-
-    int findNextPoint(int distance, int currPoint, int prevPoint, int z);
+  //  double calPointValue(int beginX,int beginY,double pointX,double pointY,int Oz, double xSpacing, double ySpacing,double* data);
 
     int getOffSet2D(int x, int y, int* dims);
 
-    int checkStartPosition(int prevPoint, int currPoint);
-
     void printXYZfile(QString filename, QVector<QVector<int>> data, int* dims, double *spacing);
-
-    void printSingleXYZfile(QString filename, QVector<int> data, int* dims, double *spacing);
-
-    void filterVectorByThreshold(double  lower, double upper, int *dims, int z);
-
-    double startingAngle(int prevPoint, int currPoint);
-
-    int findFirstPoint(int z);
-
-    void extractDICOMData(int z);
-
-    void findBoundaryPoint();
-
-    void fillHoleByBenzier(int distance, int z);
 
 
 private:
@@ -112,10 +84,10 @@ private:
     int firstPoint;
     int resultSize;
     int* finalResult;
-    double lowerBound = -1000;
-    double defaultLowerBound = -1000;
-    double upperBound = 100;
-    double maxLowerBound = 100;
+    double lowerBound = 70;
+    double defaultLowerBound = 70;
+    double upperBound = 120;
+    double maxLowerBound = 120;
     double stepBound = 100;
     QVector<int> resultVector;
     QVector<QVector<double>> modifiedDataVector;
